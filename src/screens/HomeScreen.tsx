@@ -23,6 +23,8 @@ export function HomeScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const badges = getBadges(stats);
+  const kidIdSuffix = profile?.kidId ? profile.kidId.slice(-4) : '';
+  const displayName = profile ? `${profile.nickname} (${kidIdSuffix})` : '';
 
   const loadStats = useCallback(async () => {
     if (!profile) {
@@ -57,7 +59,7 @@ export function HomeScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.greeting}>Salaam, {profile.nickname}!</Text>
+          <Text style={styles.greeting}>Salaam, {displayName}!</Text>
           <Text style={styles.subtitle}>Ready for another check-in?</Text>
         </View>
 
