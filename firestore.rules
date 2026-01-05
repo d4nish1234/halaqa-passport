@@ -11,7 +11,11 @@ service cloud.firestore {
       ])
       && request.resource.data.participantId is string
       && request.resource.data.nickname is string
-      && (request.resource.data.ageBand == null || request.resource.data.ageBand is string)
+      && (
+        !request.resource.data.keys().hasAny(['ageBand'])
+        || request.resource.data.ageBand == null
+        || request.resource.data.ageBand is string
+      )
       && request.resource.data.createdAt is timestamp
       && request.resource.data.lastSeenAt is timestamp;
     }
