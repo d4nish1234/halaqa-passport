@@ -2,41 +2,45 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
+import { FooterNav } from '../components/FooterNav';
 import { RootStackParamList } from '../navigation/RootNavigator';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Series'>;
 
 export function SeriesScreen({ route }: Props) {
-  const { series } = route.params;
+  const series = route.params?.series ?? [];
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>My Series</Text>
-        <View style={styles.list}>
-          {series.length ? (
-            series.map((item) => (
-              <View key={item.id} style={styles.seriesCard}>
-                <View style={styles.seriesHeader}>
-                  <Text style={styles.seriesName}>{item.name}</Text>
-                  {item.isCompleted ? (
-                    <View style={styles.seriesPill}>
-                      <Text style={styles.seriesPillText}>Completed</Text>
-                    </View>
-                  ) : null}
+      <View style={styles.page}>
+        <ScrollView contentContainerStyle={styles.container}>
+          <Text style={styles.title}>My Series</Text>
+          <View style={styles.list}>
+            {series.length ? (
+              series.map((item) => (
+                <View key={item.id} style={styles.seriesCard}>
+                  <View style={styles.seriesHeader}>
+                    <Text style={styles.seriesName}>{item.name}</Text>
+                    {item.isCompleted ? (
+                      <View style={styles.seriesPill}>
+                        <Text style={styles.seriesPillText}>Completed</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  <Text style={styles.seriesMeta}>
+                    {item.sessionsAttended} sessions attended
+                  </Text>
                 </View>
-                <Text style={styles.seriesMeta}>
-                  {item.sessionsAttended} sessions attended
-                </Text>
+              ))
+            ) : (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyText}>Scan QR code to join a series.</Text>
               </View>
-            ))
-          ) : (
-            <View style={styles.emptyCard}>
-              <Text style={styles.emptyText}>Scan QR code to join a series.</Text>
-            </View>
-          )}
-        </View>
-      </ScrollView>
+            )}
+          </View>
+        </ScrollView>
+        <FooterNav series={series} />
+      </View>
     </SafeAreaView>
   );
 }
@@ -46,9 +50,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F7F2EA',
   },
+  page: {
+    flex: 1,
+  },
   container: {
     padding: 24,
     gap: 16,
+    paddingBottom: 32,
   },
   title: {
     fontSize: 20,

@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions, BarcodeScanningResult } from 'expo-camera';
-import { useNavigation } from '@react-navigation/native';
 
+import { FooterNav } from '../components/FooterNav';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { useProfile } from '../context/ProfileContext';
 import { checkInSession } from '../lib/firestore';
@@ -11,7 +11,6 @@ import { parseSessionPayload } from '../lib/qr';
 
 export function ScanScreen() {
   const { profile } = useProfile();
-  const navigation = useNavigation();
   const [permission, requestPermission] = useCameraPermissions();
   const [isProcessing, setIsProcessing] = useState(false);
   const [isScanningEnabled, setIsScanningEnabled] = useState(true);
@@ -81,46 +80,47 @@ export function ScanScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.cameraWrapper}>
-        <CameraView
-          style={styles.camera}
-          onBarcodeScanned={
-            isProcessing || !isScanningEnabled ? undefined : handleBarcodeScanned
-          }
-          barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-        />
-      </View>
-
-      <View style={styles.bottomSheet}>
-        <Text style={styles.bottomTitle}>Hold the QR code inside the frame</Text>
-        <Text style={styles.bottomSubtitle}>We will check you in right away.</Text>
-
-        {isProcessing ? <ActivityIndicator /> : null}
-
-        {resultMessage ? (
-          <View
-            style={
-              resultType === 'success'
-                ? [styles.resultBox, styles.resultSuccess]
-                : [styles.resultBox, styles.resultError]
+      <View style={styles.page}>
+        <View style={styles.cameraWrapper}>
+          <CameraView
+            style={styles.camera}
+            onBarcodeScanned={
+              isProcessing || !isScanningEnabled ? undefined : handleBarcodeScanned
             }
-          >
-            <Text style={styles.resultText}>{resultMessage}</Text>
-          </View>
-        ) : null}
-
-        {resultMessage ? (
-          <PrimaryButton
-            title="Scan Again"
-            onPress={() => {
-              setResultMessage(null);
-              setResultType(null);
-              setIsScanningEnabled(true);
-            }}
+            barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
           />
-        ) : null}
+        </View>
 
-        <PrimaryButton title="Back to Home" onPress={() => navigation.goBack()} />
+        <View style={styles.bottomSheet}>
+          <Text style={styles.bottomTitle}>Hold the QR code inside the frame</Text>
+          <Text style={styles.bottomSubtitle}>We will check you in right away.</Text>
+
+          {isProcessing ? <ActivityIndicator /> : null}
+
+          {resultMessage ? (
+            <View
+              style={
+                resultType === 'success'
+                  ? [styles.resultBox, styles.resultSuccess]
+                  : [styles.resultBox, styles.resultError]
+              }
+            >
+              <Text style={styles.resultText}>{resultMessage}</Text>
+            </View>
+          ) : null}
+
+          {resultMessage ? (
+            <PrimaryButton
+              title="Scan Again"
+              onPress={() => {
+                setResultMessage(null);
+                setResultType(null);
+                setIsScanningEnabled(true);
+              }}
+            />
+          ) : null}
+        </View>
+        <FooterNav />
       </View>
     </SafeAreaView>
   );
@@ -130,6 +130,9 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#0F1C17',
+  },
+  page: {
+    flex: 1,
   },
   centered: {
     flex: 1,

@@ -6,6 +6,7 @@ import { BadgesScreen } from '../screens/BadgesScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
 import { ScanScreen } from '../screens/ScanScreen';
+import { SettingsScreen } from '../screens/SettingsScreen';
 import type { ParticipantStats } from '../types';
 import type { SeriesSummary } from '../types';
 import { SeriesScreen } from '../screens/SeriesScreen';
@@ -14,8 +15,9 @@ export type RootStackParamList = {
   Onboarding: undefined;
   Home: undefined;
   Scan: undefined;
-  Badges: { stats: ParticipantStats };
-  Series: { series: SeriesSummary[] };
+  Badges: { stats?: ParticipantStats };
+  Series: { series?: SeriesSummary[] };
+  Settings: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -44,6 +46,7 @@ export function RootNavigator() {
           <Stack.Screen name="Scan" component={ScanScreen} options={{ title: 'Scan QR' }} />
           <Stack.Screen name="Badges" component={BadgesScreen} options={{ title: 'Badges' }} />
           <Stack.Screen name="Series" component={SeriesScreen} options={{ title: 'Series' }} />
+          <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
         </>
       ) : (
         <Stack.Screen

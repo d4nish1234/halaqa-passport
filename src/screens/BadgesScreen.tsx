@@ -2,39 +2,49 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
+import { FooterNav } from '../components/FooterNav';
 import { getBadges } from '../lib/badges';
 import { RootStackParamList } from '../navigation/RootNavigator';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Badges'>;
 
 export function BadgesScreen({ route }: Props) {
-  const { stats } = route.params;
+  const stats = route.params?.stats ?? {
+    totalCheckIns: 0,
+    currentStreak: 0,
+    highestStreak: 0,
+    seriesParticipated: 0,
+    lastCheckInDate: null,
+  };
   const badges = getBadges(stats);
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>My Badges</Text>
-        <View style={styles.list}>
-          {badges.map((badge) => (
-            <View
-              key={badge.id}
-              style={[
-                styles.badgeCard,
-                badge.unlocked ? styles.badgeUnlocked : styles.badgeLocked,
-              ]}
-            >
-              <View style={styles.badgeHeader}>
-                <Text style={styles.badgeName}>{badge.title}</Text>
-                <Text style={styles.badgeStatus}>
-                  {badge.unlocked ? 'Earned' : 'Locked'}
-                </Text>
+      <View style={styles.page}>
+        <ScrollView contentContainerStyle={styles.container}>
+          <Text style={styles.title}>My Badges</Text>
+          <View style={styles.list}>
+            {badges.map((badge) => (
+              <View
+                key={badge.id}
+                style={[
+                  styles.badgeCard,
+                  badge.unlocked ? styles.badgeUnlocked : styles.badgeLocked,
+                ]}
+              >
+                <View style={styles.badgeHeader}>
+                  <Text style={styles.badgeName}>{badge.title}</Text>
+                  <Text style={styles.badgeStatus}>
+                    {badge.unlocked ? 'Earned' : 'Locked'}
+                  </Text>
+                </View>
+                <Text style={styles.badgeDescription}>{badge.description}</Text>
               </View>
-              <Text style={styles.badgeDescription}>{badge.description}</Text>
-            </View>
-          ))}
-        </View>
-      </ScrollView>
+            ))}
+          </View>
+        </ScrollView>
+        <FooterNav stats={stats} />
+      </View>
     </SafeAreaView>
   );
 }
@@ -44,9 +54,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F7F2EA',
   },
+  page: {
+    flex: 1,
+  },
   container: {
     padding: 24,
     gap: 16,
+    paddingBottom: 32,
   },
   title: {
     fontSize: 20,

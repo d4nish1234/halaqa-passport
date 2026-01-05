@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { PrimaryButton } from '../components/PrimaryButton';
+import { FooterNav } from '../components/FooterNav';
 import { useProfile } from '../context/ProfileContext';
 import { getBadges } from '../lib/badges';
 import {
@@ -148,99 +148,100 @@ export function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.greeting}>Salaam, {displayName}!</Text>
-          <Text style={styles.subtitle}>Ready for another check-in?</Text>
-        </View>
-
-        <View style={styles.seriesSection}>
-          <View style={styles.seriesHeader}>
-            <Text style={styles.seriesTitle}>My Current Series</Text>
-            <Pressable
-              onPress={() => navigation.navigate('Series', { series: seriesSummaries })}
-            >
-              <Text style={styles.seriesLink}>View All</Text>
-            </Pressable>
+      <View style={styles.page}>
+        <ScrollView
+          contentContainerStyle={styles.container}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.header}>
+            <Text style={styles.greeting}>Salaam, {displayName}!</Text>
+            <Text style={styles.subtitle}>Ready for another check-in?</Text>
           </View>
-          {currentSeries ? (
-            <View style={styles.seriesCard}>
-              <View style={styles.seriesTopRow}>
-                <Text style={styles.seriesName}>{currentSeries.name}</Text>
-                {currentSeries.isCompleted ? (
-                  <View style={styles.seriesPill}>
-                    <Text style={styles.seriesPillText}>Completed</Text>
-                  </View>
-                ) : null}
-              </View>
-              <Text style={styles.seriesMeta}>
-                {currentSeries.sessionsAttended} sessions attended
-              </Text>
-            </View>
-          ) : (
-            <View style={styles.seriesEmpty}>
-              <Text style={styles.seriesEmptyText}>Scan QR code to join a series.</Text>
-            </View>
-          )}
-        </View>
 
-        <View style={styles.badgeSection}>
-          <View style={styles.badgeHeader}>
-            <Text style={styles.badgeTitle}>My Badges</Text>
-            <Pressable onPress={() => navigation.navigate('Badges', { stats })}>
-              <Text style={styles.badgeLink}>View All</Text>
-            </Pressable>
-          </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.badgeRow}
-          >
-            {earnedBadges.length ? (
-              earnedBadges.map((badge) => (
-                <View key={badge.id} style={[styles.badgeCard, styles.badgeUnlocked]}>
-                  <Text style={styles.badgeName}>{badge.title}</Text>
-                  <Text style={styles.badgeDescription}>{badge.description}</Text>
+          <View style={styles.seriesSection}>
+            <View style={styles.seriesHeader}>
+              <Text style={styles.seriesTitle}>My Current Series</Text>
+              <Pressable
+                onPress={() => navigation.navigate('Series', { series: seriesSummaries })}
+              >
+                <Text style={styles.seriesLink}>View All</Text>
+              </Pressable>
+            </View>
+            {currentSeries ? (
+              <View style={styles.seriesCard}>
+                <View style={styles.seriesTopRow}>
+                  <Text style={styles.seriesName}>{currentSeries.name}</Text>
+                  {currentSeries.isCompleted ? (
+                    <View style={styles.seriesPill}>
+                      <Text style={styles.seriesPillText}>Completed</Text>
+                    </View>
+                  ) : null}
                 </View>
-              ))
+                <Text style={styles.seriesMeta}>
+                  {currentSeries.sessionsAttended} sessions attended
+                </Text>
+              </View>
             ) : (
-              <View style={[styles.badgeCard, styles.badgeEmpty]}>
-                <Text style={styles.badgeEmptyTitle}>No badges yet</Text>
-                <Text style={styles.badgeDescription}>Check in to start earning.</Text>
+              <View style={styles.seriesEmpty}>
+                <Text style={styles.seriesEmptyText}>Scan QR code to join a series.</Text>
               </View>
             )}
-          </ScrollView>
-        </View>
+          </View>
 
-        <View style={styles.statsSection}>
-          <Text style={styles.sectionTitle}>My Stats</Text>
-          <View style={styles.card}>
-          <View style={styles.statRow}>
-            <Text style={styles.statLabel}>Total Check-ins</Text>
-            <Text style={styles.statValue}>{stats.totalCheckIns}</Text>
+          <View style={styles.badgeSection}>
+            <View style={styles.badgeHeader}>
+              <Text style={styles.badgeTitle}>My Badges</Text>
+              <Pressable onPress={() => navigation.navigate('Badges', { stats })}>
+                <Text style={styles.badgeLink}>View All</Text>
+              </Pressable>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.badgeRow}
+            >
+              {earnedBadges.length ? (
+                earnedBadges.map((badge) => (
+                  <View key={badge.id} style={[styles.badgeCard, styles.badgeUnlocked]}>
+                    <Text style={styles.badgeName}>{badge.title}</Text>
+                    <Text style={styles.badgeDescription}>{badge.description}</Text>
+                  </View>
+                ))
+              ) : (
+                <View style={[styles.badgeCard, styles.badgeEmpty]}>
+                  <Text style={styles.badgeEmptyTitle}>No badges yet</Text>
+                  <Text style={styles.badgeDescription}>Check in to start earning.</Text>
+                </View>
+              )}
+            </ScrollView>
           </View>
-          <View style={styles.statRow}>
-            <Text style={styles.statLabel}>Current Series Streak</Text>
-            <Text style={styles.statValue}>{stats.currentStreak} sessions</Text>
-          </View>
-          <View style={styles.statRow}>
-            <Text style={styles.statLabel}>Highest Series Streak</Text>
-            <Text style={styles.statValue}>{stats.highestStreak} sessions</Text>
-          </View>
-          <View style={styles.statRow}>
-            <Text style={styles.statLabel}>Last Check-in</Text>
-            <Text style={styles.statValue}>{stats.lastCheckInDate ?? 'Not yet'}</Text>
-          </View>
-          </View>
-        </View>
 
-        {isLoading ? <ActivityIndicator /> : null}
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+          <View style={styles.statsSection}>
+            <Text style={styles.sectionTitle}>My Stats</Text>
+            <View style={styles.card}>
+              <View style={styles.statRow}>
+                <Text style={styles.statLabel}>Total Check-ins</Text>
+                <Text style={styles.statValue}>{stats.totalCheckIns}</Text>
+              </View>
+              <View style={styles.statRow}>
+                <Text style={styles.statLabel}>Current Series Streak</Text>
+                <Text style={styles.statValue}>{stats.currentStreak} sessions</Text>
+              </View>
+              <View style={styles.statRow}>
+                <Text style={styles.statLabel}>Highest Series Streak</Text>
+                <Text style={styles.statValue}>{stats.highestStreak} sessions</Text>
+              </View>
+              <View style={styles.statRow}>
+                <Text style={styles.statLabel}>Last Check-in</Text>
+                <Text style={styles.statValue}>{stats.lastCheckInDate ?? 'Not yet'}</Text>
+              </View>
+            </View>
+          </View>
 
-        <PrimaryButton
-          title="Scan QR to Check In"
-          onPress={() => navigation.navigate('Scan')}
-        />
+          {isLoading ? <ActivityIndicator /> : null}
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+        </ScrollView>
+        <FooterNav stats={stats} series={seriesSummaries} />
       </View>
     </SafeAreaView>
   );
@@ -251,10 +252,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F7F2EA',
   },
-  container: {
+  page: {
     flex: 1,
-    padding: 24,
+  },
+  container: {
+    paddingHorizontal: 24,
+    paddingTop: 8,
     gap: 24,
+    paddingBottom: 24,
   },
   header: {
     gap: 6,
@@ -263,6 +268,8 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     color: '#1B3A2E',
+    lineHeight: 30,
+    paddingTop: 2,
   },
   subtitle: {
     color: '#3F5D52',
