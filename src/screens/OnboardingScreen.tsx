@@ -17,9 +17,12 @@ import { saveProfile } from '../lib/storage';
 import { AgeBand, ParticipantProfile } from '../types';
 
 const AGE_BANDS: { label: string; value: AgeBand }[] = [
-  { label: '7-9', value: '7-9' },
-  { label: '10-12', value: '10-12' },
-  { label: '13-15', value: '13-15' },
+  { label: '5-7', value: '5-7' },
+  { label: '8-10', value: '8-10' },
+  { label: '11-13', value: '11-13' },
+  { label: '14-17', value: '14-17' },
+  { label: '18-35', value: '18-35' },
+  { label: '36+', value: '36+' },
 ];
 
 export function OnboardingScreen() {

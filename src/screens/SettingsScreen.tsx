@@ -1,11 +1,44 @@
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useState } from 'react';
+import { MaterialIcons } from '@expo/vector-icons';
 
 import { FooterNav } from '../components/FooterNav';
+import { clearProfile } from '../lib/storage';
+import { useProfile } from '../context/ProfileContext';
 
 export function SettingsScreen() {
+  const { setProfile } = useProfile();
+  const [isDeleting, setIsDeleting] = useState(false);
   const privacyPolicyUrl =
     'https://raw.githubusercontent.com/d4nish1234/halaqa-passport/refs/heads/main/PRIVACY_POLICY.md';
+
+  const handleDeleteData = () => {
+    if (isDeleting) {
+      return;
+    }
+
+    Alert.alert(
+      'Delete local data?',
+      'This removes your profile from this device so you can sign up again.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setIsDeleting(true);
+            try {
+              await clearProfile();
+              setProfile(null);
+            } finally {
+              setIsDeleting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -15,11 +48,28 @@ export function SettingsScreen() {
           <Pressable
             style={({ pressed }) => [styles.rowButton, pressed && styles.rowPressed]}
             onPress={() => Linking.openURL(privacyPolicyUrl)}
+            disabled={isDeleting}
           >
             <View style={styles.iconCircle}>
               <Text style={styles.iconText}>i</Text>
             </View>
             <Text style={styles.rowLabel}>Privacy policy</Text>
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [
+              styles.rowButton,
+              styles.deleteRow,
+              pressed && styles.rowPressed,
+            ]}
+            onPress={handleDeleteData}
+            disabled={isDeleting}
+          >
+            <View style={[styles.iconCircle, styles.deleteIconCircle]}>
+              <MaterialIcons name="delete" size={18} color="#B42318" />
+            </View>
+            <Text style={[styles.rowLabel, styles.deleteLabel]}>
+              {isDeleting ? 'Deleting...' : 'Delete data'}
+            </Text>
           </Pressable>
         </View>
         <FooterNav />
@@ -81,5 +131,14 @@ const styles = StyleSheet.create({
     color: '#1E6F5C',
     fontWeight: '700',
     fontSize: 14,
+  },
+  deleteRow: {
+    borderColor: '#F4D6D4',
+  },
+  deleteIconCircle: {
+    backgroundColor: '#FCE8E6',
+  },
+  deleteLabel: {
+    color: '#B42318',
   },
 });

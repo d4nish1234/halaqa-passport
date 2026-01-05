@@ -20,3 +20,7 @@ export async function loadProfile(): Promise<ParticipantProfile | null> {
 export async function saveProfile(profile: ParticipantProfile): Promise<void> {
   await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
 }
+
+export async function clearProfile(): Promise<void> {
+  await AsyncStorage.removeItem(PROFILE_KEY);
+}

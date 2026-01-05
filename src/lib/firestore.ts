@@ -37,7 +37,7 @@ export async function createParticipantProfile(
     {
       participantId: profile.participantId,
       nickname: profile.nickname,
-      ageBand: profile.ageBand,
+      ...(profile.ageBand ? { ageBand: profile.ageBand } : {}),
       createdAt: serverTimestamp(),
       lastSeenAt: serverTimestamp(),
     },
