@@ -6,7 +6,7 @@ import { BadgesScreen } from '../screens/BadgesScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
 import { ScanScreen } from '../screens/ScanScreen';
-import type { KidStats } from '../types';
+import type { ParticipantStats } from '../types';
 import type { SeriesSummary } from '../types';
 import { SeriesScreen } from '../screens/SeriesScreen';
 
@@ -14,7 +14,7 @@ export type RootStackParamList = {
   Onboarding: undefined;
   Home: undefined;
   Scan: undefined;
-  Badges: { stats: KidStats };
+  Badges: { stats: ParticipantStats };
   Series: { series: SeriesSummary[] };
 };
 

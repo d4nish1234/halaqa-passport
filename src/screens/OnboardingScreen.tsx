@@ -12,9 +12,9 @@ import * as Crypto from 'expo-crypto';
 
 import { PrimaryButton } from '../components/PrimaryButton';
 import { useProfile } from '../context/ProfileContext';
-import { createKidProfile } from '../lib/firestore';
+import { createParticipantProfile } from '../lib/firestore';
 import { saveProfile } from '../lib/storage';
-import { AgeBand, KidProfile } from '../types';
+import { AgeBand, ParticipantProfile } from '../types';
 
 const AGE_BANDS: { label: string; value: AgeBand }[] = [
   { label: '7-9', value: '7-9' },
@@ -40,13 +40,13 @@ export function OnboardingScreen() {
     setIsSubmitting(true);
 
     try {
-      const profile: KidProfile = {
+      const profile: ParticipantProfile = {
         participantId: Crypto.randomUUID(),
         nickname: trimmed,
         ageBand,
       };
       await saveProfile(profile);
-      await createKidProfile(profile);
+      await createParticipantProfile(profile);
       setProfile(profile);
     } catch (err) {
       setError('Something went wrong. Please try again.');

@@ -1,12 +1,12 @@
 export type AgeBand = '7-9' | '10-12' | '13-15' | null;
 
-export type KidProfile = {
+export type ParticipantProfile = {
   participantId: string;
   nickname: string;
   ageBand: AgeBand;
 };
 
-export type KidStats = {
+export type ParticipantStats = {
   totalCheckIns: number;
   currentStreak: number;
   highestStreak: number;

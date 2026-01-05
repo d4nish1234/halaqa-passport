@@ -16,21 +16,21 @@ import { useProfile } from '../context/ProfileContext';
 import { getBadges } from '../lib/badges';
 import {
   fetchActiveSeries,
-  fetchAttendanceDates,
-  fetchAttendanceRecords,
-  fetchAttendanceForSeries,
+  fetchParticipantAttendanceDates,
+  fetchParticipantAttendanceRecords,
+  fetchParticipantAttendanceForSeries,
   fetchSeriesByIds,
   fetchSessionsForSeries,
-  updateLastSeen,
+  updateParticipantLastSeen,
 } from '../lib/firestore';
 import { calculateSeriesStreak, calculateTotals } from '../lib/stats';
-import { KidStats, SeriesSummary } from '../types';
+import { ParticipantStats, SeriesSummary } from '../types';
 import { RootStackParamList } from '../navigation/RootNavigator';
 
 export function HomeScreen() {
   const { profile } = useProfile();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const [stats, setStats] = useState<KidStats>({
+  const [stats, setStats] = useState<ParticipantStats>({
     totalCheckIns: 0,
     currentStreak: 0,
     highestStreak: 0,
@@ -46,7 +46,7 @@ export function HomeScreen() {
   const participantIdSuffix = profile?.participantId
     ? profile.participantId.slice(-4)
     : '';
-  const displayName = profile ? `${profile.nickname}-${participantIdSuffix}` : '';
+  const displayName = profile ? `${profile.nickname} (${participantIdSuffix})` : '';
 
   const loadStats = useCallback(async () => {
     if (!profile) {
@@ -57,10 +57,10 @@ export function HomeScreen() {
     setError(null);
 
     try {
-      await updateLastSeen(profile.participantId);
+      await updateParticipantLastSeen(profile.participantId);
       const [attendanceDates, attendanceRecords, activeSeries] = await Promise.all([
-        fetchAttendanceDates(profile.participantId),
-        fetchAttendanceRecords(profile.participantId),
+        fetchParticipantAttendanceDates(profile.participantId),
+        fetchParticipantAttendanceRecords(profile.participantId),
         fetchActiveSeries(),
       ]);
 
@@ -70,7 +70,7 @@ export function HomeScreen() {
       if (activeSeries) {
         const [sessions, attendance] = await Promise.all([
           fetchSessionsForSeries(activeSeries.id),
-          fetchAttendanceForSeries(profile.participantId, activeSeries.id),
+          fetchParticipantAttendanceForSeries(profile.participantId, activeSeries.id),
         ]);
         const streaks = calculateSeriesStreak(sessions, attendance);
         currentStreak = streaks.currentStreak;

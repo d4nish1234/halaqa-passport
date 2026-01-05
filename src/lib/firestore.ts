@@ -14,7 +14,7 @@ import {
 import {
   AttendanceRecord,
   CheckInResult,
-  KidProfile,
+  ParticipantProfile,
   Series,
   Session,
   SessionPayload,
@@ -28,7 +28,9 @@ function toDate(value: unknown): Date | null {
   return null;
 }
 
-export async function createKidProfile(profile: KidProfile): Promise<void> {
+export async function createParticipantProfile(
+  profile: ParticipantProfile
+): Promise<void> {
   const ref = doc(db, 'participants', profile.participantId);
   await setDoc(
     ref,
@@ -43,12 +45,14 @@ export async function createKidProfile(profile: KidProfile): Promise<void> {
   );
 }
 
-export async function updateLastSeen(participantId: string): Promise<void> {
+export async function updateParticipantLastSeen(participantId: string): Promise<void> {
   const ref = doc(db, 'participants', participantId);
   await setDoc(ref, { lastSeenAt: serverTimestamp() }, { merge: true });
 }
 
-export async function fetchAttendanceDates(participantId: string): Promise<Date[]> {
+export async function fetchParticipantAttendanceDates(
+  participantId: string
+): Promise<Date[]> {
   const attendanceRef = collection(db, 'attendance');
   const attendanceQuery = query(
     attendanceRef,
@@ -64,7 +68,7 @@ export async function fetchAttendanceDates(participantId: string): Promise<Date[
     .filter((date): date is Date => Boolean(date));
 }
 
-export async function fetchAttendanceRecords(
+export async function fetchParticipantAttendanceRecords(
   participantId: string
 ): Promise<AttendanceRecord[]> {
   const attendanceRef = collection(db, 'attendance');
@@ -154,7 +158,7 @@ export async function fetchSessionsForSeries(seriesId: string): Promise<Session[
   });
 }
 
-export async function fetchAttendanceForSeries(
+export async function fetchParticipantAttendanceForSeries(
   participantId: string,
   seriesId: string
 ): Promise<AttendanceRecord[]> {
