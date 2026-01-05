@@ -15,20 +15,30 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSCameraUsageDescription": "Allow Halaqa Passport to scan QR codes for check-in."
-      }
+        "NSCameraUsageDescription": "Allow Halaqa Passport to scan QR codes for check-in.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.danishmahboob.halaqapassport"
     },
     "android": {
-      "permissions": ["CAMERA"],
+      "permissions": [
+        "CAMERA"
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.danishmahboob.halaqapassport"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "e1cfbf46-1097-4e8f-b3df-5f8ec6d08f86"
+      }
     }
   }
 }

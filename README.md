@@ -118,6 +118,18 @@ npm run build
 npm run deploy
 ```
 
+## Build iOS (EAS)
+
+```bash
+eas build -p ios --profile production
+```
+
+## Build Android (EAS)
+
+```bash
+eas build -p android --profile production
+```
+
 ## Notes
 
 - No email/password auth. A local `participantId` UUID is generated and stored locally + in Firestore.
