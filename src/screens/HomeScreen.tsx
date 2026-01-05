@@ -160,7 +160,7 @@ export function HomeScreen() {
 
           <View style={styles.seriesSection}>
             <View style={styles.seriesHeader}>
-              <Text style={styles.seriesTitle}>My Current Series</Text>
+              <Text style={styles.seriesTitle}>My Recent Series</Text>
               <Pressable
                 onPress={() => navigation.navigate('Series', { series: seriesSummaries })}
               >
