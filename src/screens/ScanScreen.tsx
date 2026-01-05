@@ -59,7 +59,10 @@ export function ScanScreen() {
     }
 
     try {
-      const response = await checkInSession({ ...payload, kidId: profile.kidId });
+      const response = await checkInSession({
+        ...payload,
+        participantId: profile.participantId,
+      });
       if (response.ok) {
         setResultType('success');
         setResultMessage('All set! You are checked in.');

@@ -5,10 +5,10 @@ admin.initializeApp();
 
 const db = admin.firestore();
 
-export const checkInSession = functions.https.onCall(async (data) => {
-  const { kidId, sessionId, seriesId, token } = data || {};
+export const checkInSession = functions.https.onCall(async (request) => {
+  const { participantId, sessionId, seriesId, token } = request.data || {};
 
-  if (!kidId || !sessionId || !seriesId || !token) {
+  if (!participantId || !sessionId || !seriesId || !token) {
     return { ok: false, message: 'Missing check-in details.' };
   }
 
@@ -46,7 +46,7 @@ export const checkInSession = functions.https.onCall(async (data) => {
     return { ok: false, message: 'This QR code has expired.' };
   }
 
-  const attendanceId = `${sessionId}_${kidId}`;
+  const attendanceId = `${sessionId}_${participantId}`;
   const attendanceRef = db.collection('attendance').doc(attendanceId);
 
   try {
@@ -57,7 +57,7 @@ export const checkInSession = functions.https.onCall(async (data) => {
       }
 
       transaction.set(attendanceRef, {
-        kidId,
+        participantId,
         sessionId,
         seriesId,
         timestamp: admin.firestore.FieldValue.serverTimestamp(),

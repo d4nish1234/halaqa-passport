@@ -41,7 +41,7 @@ export function OnboardingScreen() {
 
     try {
       const profile: KidProfile = {
-        kidId: Crypto.randomUUID(),
+        participantId: Crypto.randomUUID(),
         nickname: trimmed,
         ageBand,
       };

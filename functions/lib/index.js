@@ -38,10 +38,10 @@ const admin = __importStar(require("firebase-admin"));
 const functions = __importStar(require("firebase-functions"));
 admin.initializeApp();
 const db = admin.firestore();
-exports.checkInSession = functions.https.onCall(async (data) => {
+exports.checkInSession = functions.https.onCall(async (request) => {
     var _a, _b, _c, _d, _e, _f, _g;
-    const { kidId, sessionId, seriesId, token } = data || {};
-    if (!kidId || !sessionId || !seriesId || !token) {
+    const { participantId, sessionId, seriesId, token } = request.data || {};
+    if (!participantId || !sessionId || !seriesId || !token) {
         return { ok: false, message: 'Missing check-in details.' };
     }
     const sessionRef = db.collection('sessions').doc(sessionId);
@@ -70,7 +70,7 @@ exports.checkInSession = functions.https.onCall(async (data) => {
     if (!validToken || validToken !== token) {
         return { ok: false, message: 'This QR code has expired.' };
     }
-    const attendanceId = `${sessionId}_${kidId}`;
+    const attendanceId = `${sessionId}_${participantId}`;
     const attendanceRef = db.collection('attendance').doc(attendanceId);
     try {
         await db.runTransaction(async (transaction) => {
@@ -79,7 +79,7 @@ exports.checkInSession = functions.https.onCall(async (data) => {
                 throw new functions.https.HttpsError('already-exists', 'Already checked in.');
             }
             transaction.set(attendanceRef, {
-                kidId,
+                participantId,
                 sessionId,
                 seriesId,
                 timestamp: admin.firestore.FieldValue.serverTimestamp(),

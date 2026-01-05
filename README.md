@@ -65,8 +65,8 @@ Collections (V1):
 
 - `series`: `{ id, name, startDate, endDate, isActive }`
 - `sessions`: `{ id, seriesId, startAt, checkinOpenAt, checkinCloseAt, rotatingToken }`
-- `kids`: `{ kidId, nickname, ageBand, createdAt, lastSeenAt }`
-- `attendance`: `{ kidId, sessionId, seriesId, timestamp }`
+- `participants`: `{ participantId, nickname, ageBand, createdAt, lastSeenAt }`
+- `attendance`: `{ participantId, sessionId, seriesId, timestamp }`
 
 ### Test data example
 
@@ -120,6 +120,6 @@ npm run deploy
 
 ## Notes
 
-- No email/password auth. A local `kidId` UUID is generated and stored locally + in Firestore.
+- No email/password auth. A local `participantId` UUID is generated and stored locally + in Firestore.
 - Time window + duplicate prevention are enforced in the Cloud Function.
 - Stats (total + streak) are calculated client-side from attendance docs.
