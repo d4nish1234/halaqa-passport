@@ -1,0 +1,43 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isValidParticipant() {
+      return request.resource.data.keys().hasOnly([
+        'participantId',
+        'nickname',
+        'ageBand',
+        'createdAt',
+        'lastSeenAt'
+      ])
+      && request.resource.data.participantId is string
+      && request.resource.data.nickname is string
+      && request.resource.data.ageBand is string
+      && request.resource.data.createdAt is timestamp
+      && request.resource.data.lastSeenAt is timestamp;
+    }
+
+    match /series/{seriesId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /sessions/{sessionId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /participants/{participantId} {
+      allow read: if true;
+      allow create: if isValidParticipant()
+        && request.resource.data.participantId == participantId;
+      allow update: if isValidParticipant()
+        && request.resource.data.participantId == participantId;
+      allow delete: if false;
+    }
+
+    match /attendance/{attendanceId} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}

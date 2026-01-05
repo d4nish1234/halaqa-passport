@@ -118,6 +118,14 @@ npm run build
 npm run deploy
 ```
 
+## Firestore rules
+
+To deploy:
+
+```bash
+firebase deploy --only firestore:rules --project halaqa-passport
+```
+
 ## Build iOS (EAS)
 
 ```bash
