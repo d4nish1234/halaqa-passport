@@ -2,15 +2,19 @@ import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions, BarcodeScanningResult } from 'expo-camera';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { FooterNav } from '../components/FooterNav';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { useProfile } from '../context/ProfileContext';
 import { checkInSession } from '../lib/firestore';
 import { parseSessionPayload } from '../lib/qr';
+import type { RootStackParamList } from '../navigation/RootNavigator';
 
 export function ScanScreen() {
   const { profile } = useProfile();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [permission, requestPermission] = useCameraPermissions();
   const [isProcessing, setIsProcessing] = useState(false);
   const [isScanningEnabled, setIsScanningEnabled] = useState(true);
@@ -63,8 +67,9 @@ export function ScanScreen() {
         participantId: profile.participantId,
       });
       if (response.ok) {
-        setResultType('success');
-        setResultMessage('All set! You are checked in.');
+        setIsScanningEnabled(false);
+        navigation.navigate('Home', { showCheckInSuccess: true });
+        return;
       } else {
         setResultType('error');
         setResultMessage(response.message || 'Check-in did not work.');

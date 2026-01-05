@@ -1,6 +1,8 @@
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
+  Dimensions,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -8,10 +10,11 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { FooterNav } from '../components/FooterNav';
+import { PrimaryButton } from '../components/PrimaryButton';
 import { useProfile } from '../context/ProfileContext';
 import { getBadges } from '../lib/badges';
 import {
@@ -26,10 +29,13 @@ import {
 import { calculateSeriesStreak, calculateTotals } from '../lib/stats';
 import { ParticipantStats, SeriesSummary } from '../types';
 import { RootStackParamList } from '../navigation/RootNavigator';
+import ConfettiCannon from 'react-native-confetti-cannon';
+import type { RouteProp } from '@react-navigation/native';
 
 export function HomeScreen() {
   const { profile } = useProfile();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route = useRoute<RouteProp<RootStackParamList, 'Home'>>();
   const [stats, setStats] = useState<ParticipantStats>({
     totalCheckIns: 0,
     currentStreak: 0,
@@ -41,12 +47,15 @@ export function HomeScreen() {
   const [error, setError] = useState<string | null>(null);
   const [seriesSummaries, setSeriesSummaries] = useState<SeriesSummary[]>([]);
   const [currentSeries, setCurrentSeries] = useState<SeriesSummary | null>(null);
+  const [isCheckInModalVisible, setIsCheckInModalVisible] = useState(false);
+  const [confettiKey, setConfettiKey] = useState(0);
+  const confettiOrigin = { x: Dimensions.get('window').width / 2, y: 0 };
   const badges = getBadges(stats);
   const earnedBadges = badges.filter((badge) => badge.unlocked);
   const participantIdSuffix = profile?.participantId
     ? profile.participantId.slice(-4)
     : '';
-  const displayName = profile ? `${profile.nickname} (${participantIdSuffix})` : '';
+  const displayName = profile ? profile.nickname : '';
 
   const loadStats = useCallback(async () => {
     if (!profile) {
@@ -142,6 +151,16 @@ export function HomeScreen() {
     }, [loadStats])
   );
 
+  useFocusEffect(
+    useCallback(() => {
+      if (route.params?.showCheckInSuccess) {
+        setIsCheckInModalVisible(true);
+        setConfettiKey((prev) => prev + 1);
+        navigation.setParams({ showCheckInSuccess: undefined });
+      }
+    }, [navigation, route.params?.showCheckInSuccess])
+  );
+
   if (!profile) {
     return null;
   }
@@ -149,12 +168,42 @@ export function HomeScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.page}>
+        {isCheckInModalVisible ? (
+          <View style={styles.confetti} pointerEvents="none">
+            <ConfettiCannon
+              key={`confetti-${confettiKey}`}
+              count={120}
+              origin={confettiOrigin}
+              fadeOut
+            />
+          </View>
+        ) : null}
+        <Modal
+          transparent
+          visible={isCheckInModalVisible}
+          animationType="fade"
+          onRequestClose={() => setIsCheckInModalVisible(false)}
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>You are signed in!</Text>
+              <Text style={styles.modalText}>Great job making it to halaqa today.</Text>
+              <PrimaryButton
+                title="OK"
+                onPress={() => setIsCheckInModalVisible(false)}
+              />
+            </View>
+          </View>
+        </Modal>
         <ScrollView
           contentContainerStyle={styles.container}
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
             <Text style={styles.greeting}>Salaam, {displayName}!</Text>
+            {participantIdSuffix ? (
+              <Text style={styles.userId}>User id: {participantIdSuffix}</Text>
+            ) : null}
             <Text style={styles.subtitle}>Ready for another check-in?</Text>
           </View>
 
@@ -274,6 +323,11 @@ const styles = StyleSheet.create({
   subtitle: {
     color: '#3F5D52',
     fontSize: 15,
+  },
+  userId: {
+    color: '#3F5D52',
+    fontSize: 13,
+    fontWeight: '600',
   },
   card: {
     backgroundColor: '#fff',
@@ -421,5 +475,34 @@ const styles = StyleSheet.create({
   error: {
     color: '#B42318',
     fontWeight: '600',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 28, 23, 0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    padding: 20,
+    gap: 12,
+    width: '100%',
+    maxWidth: 340,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1B3A2E',
+    textAlign: 'center',
+  },
+  modalText: {
+    color: '#3F5D52',
+    textAlign: 'center',
+  },
+  confetti: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 10,
   },
 });

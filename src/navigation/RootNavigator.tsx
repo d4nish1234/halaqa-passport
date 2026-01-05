@@ -13,7 +13,7 @@ import { SeriesScreen } from '../screens/SeriesScreen';
 
 export type RootStackParamList = {
   Onboarding: undefined;
-  Home: undefined;
+  Home: { showCheckInSuccess?: boolean };
   Scan: undefined;
   Badges: { stats?: ParticipantStats };
   Series: { series?: SeriesSummary[] };
