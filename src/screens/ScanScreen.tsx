@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions, BarcodeScanningResult } from 'expo-camera';
 import { useNavigation } from '@react-navigation/native';
@@ -34,11 +34,24 @@ export function ScanScreen() {
   }
 
   if (!permission.granted) {
+    const isPermanentlyDenied = permission.canAskAgain === false;
     return (
       <SafeAreaView style={styles.permissionContainer}>
         <Text style={styles.permissionTitle}>Camera Time</Text>
-        <Text style={styles.permissionText}>We need the camera to scan the QR code.</Text>
-        <PrimaryButton title="Allow Camera" onPress={requestPermission} />
+        <Text style={styles.permissionText}>
+          We need the camera to scan the QR code.
+        </Text>
+        {isPermanentlyDenied ? (
+          <Text style={styles.permissionHint}>
+            Camera access is blocked. Enable it in your device settings.
+          </Text>
+        ) : null}
+        <PrimaryButton
+          title={isPermanentlyDenied ? 'Open Settings' : 'Allow Camera'}
+          onPress={
+            isPermanentlyDenied ? () => Linking.openSettings() : requestPermission
+          }
+        />
       </SafeAreaView>
     );
   }
@@ -161,6 +174,11 @@ const styles = StyleSheet.create({
   permissionText: {
     color: '#3F5D52',
     textAlign: 'center',
+  },
+  permissionHint: {
+    color: '#3F5D52',
+    textAlign: 'center',
+    fontSize: 12,
   },
   cameraWrapper: {
     flex: 1,
