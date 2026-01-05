@@ -1,22 +1,109 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { FooterNav } from '../components/FooterNav';
+import { useProfile } from '../context/ProfileContext';
 import { getBadges } from '../lib/badges';
+import {
+  fetchActiveSeries,
+  fetchParticipantAttendanceDates,
+  fetchParticipantAttendanceForSeries,
+  fetchParticipantAttendanceRecords,
+  fetchSessionsForSeries,
+} from '../lib/firestore';
+import { calculateSeriesStreak, calculateTotals } from '../lib/stats';
 import { RootStackParamList } from '../navigation/RootNavigator';
+import type { ParticipantStats } from '../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Badges'>;
 
 export function BadgesScreen({ route }: Props) {
-  const stats = route.params?.stats ?? {
+  const { profile } = useProfile();
+  const providedStats = route.params?.stats;
+  const [stats, setStats] = useState<ParticipantStats>(
+    providedStats ?? {
+      totalCheckIns: 0,
+      currentStreak: 0,
+      highestStreak: 0,
+      seriesParticipated: 0,
+      lastCheckInDate: null,
+    }
+  );
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (providedStats) {
+      setStats(providedStats);
+    }
+  }, [providedStats]);
+
+  const loadStats = useCallback(async () => {
+    if (!profile) {
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const [attendanceDates, attendanceRecords, activeSeries] = await Promise.all([
+        fetchParticipantAttendanceDates(profile.participantId),
+        fetchParticipantAttendanceRecords(profile.participantId),
+        fetchActiveSeries(),
+      ]);
+
+      let currentStreak = 0;
+      let highestStreak = 0;
+
+      if (activeSeries) {
+        const [sessions, attendance] = await Promise.all([
+          fetchSessionsForSeries(activeSeries.id),
+          fetchParticipantAttendanceForSeries(profile.participantId, activeSeries.id),
+        ]);
+        const streaks = calculateSeriesStreak(sessions, attendance);
+        currentStreak = streaks.currentStreak;
+        highestStreak = streaks.highestStreak;
+      }
+
+      const totals = calculateTotals(attendanceDates);
+      const seriesIds = new Set<string>();
+      attendanceRecords.forEach((record) => {
+        if (record.seriesId) {
+          seriesIds.add(record.seriesId);
+        }
+      });
+
+      setStats({
+        totalCheckIns: totals.totalCheckIns,
+        lastCheckInDate: totals.lastCheckInDate,
+        currentStreak,
+        highestStreak,
+        seriesParticipated: seriesIds.size,
+      });
+    } catch (err) {
+      setError('We had trouble loading your badges.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [profile]);
+
+  useEffect(() => {
+    if (!providedStats) {
+      loadStats();
+    }
+  }, [loadStats, providedStats]);
+
+  const statsFallback = {
     totalCheckIns: 0,
     currentStreak: 0,
     highestStreak: 0,
     seriesParticipated: 0,
     lastCheckInDate: null,
   };
-  const badges = getBadges(stats);
+  const badges = getBadges(stats ?? statsFallback);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -24,6 +111,8 @@ export function BadgesScreen({ route }: Props) {
         <ScrollView contentContainerStyle={styles.container}>
           <Text style={styles.title}>My Badges</Text>
           <View style={styles.list}>
+            {isLoading ? <ActivityIndicator /> : null}
+            {!isLoading && error ? <Text style={styles.error}>{error}</Text> : null}
             {badges.map((badge) => (
               <View
                 key={badge.id}
@@ -103,5 +192,9 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontSize: 13,
     color: '#3F5D52',
+  },
+  error: {
+    color: '#B42318',
+    fontWeight: '600',
   },
 });

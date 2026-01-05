@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { MaterialIcons } from '@expo/vector-icons';
 
 import type { ParticipantStats, SeriesSummary } from '../types';
 import { RootStackParamList } from '../navigation/RootNavigator';
@@ -16,27 +17,32 @@ export function FooterNav({ stats, series }: FooterNavProps) {
   return (
     <View style={styles.container}>
       <Pressable style={styles.navItem} onPress={() => navigation.navigate('Home')}>
+        <MaterialIcons name="home" size={20} color="#1B3A2E" />
         <Text style={styles.navLabel}>Home</Text>
       </Pressable>
       <Pressable
         style={styles.navItem}
         onPress={() => navigation.navigate('Badges', { stats })}
       >
+        <MaterialIcons name="emoji-events" size={20} color="#1B3A2E" />
         <Text style={styles.navLabel}>Badges</Text>
       </Pressable>
       <Pressable style={styles.cameraButton} onPress={() => navigation.navigate('Scan')}>
+        <MaterialIcons name="qr-code-scanner" size={24} color="#fff" />
         <Text style={styles.cameraLabel}>Scan</Text>
       </Pressable>
       <Pressable
         style={styles.navItem}
         onPress={() => navigation.navigate('Series', { series })}
       >
+        <MaterialIcons name="list-alt" size={20} color="#1B3A2E" />
         <Text style={styles.navLabel}>Series</Text>
       </Pressable>
       <Pressable
         style={styles.navItem}
         onPress={() => navigation.navigate('Settings')}
       >
+        <MaterialIcons name="settings" size={20} color="#1B3A2E" />
         <Text style={styles.navLabel}>Settings</Text>
       </Pressable>
     </View>
@@ -57,11 +63,11 @@ const styles = StyleSheet.create({
   navItem: {
     flex: 1,
     alignItems: 'center',
-    gap: 4,
+    gap: 2,
   },
   navLabel: {
     color: '#3F5D52',
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '600',
   },
   cameraButton: {
@@ -78,6 +84,6 @@ const styles = StyleSheet.create({
   cameraLabel: {
     color: '#fff',
     fontWeight: '700',
-    fontSize: 12,
+    fontSize: 10,
   },
 });
