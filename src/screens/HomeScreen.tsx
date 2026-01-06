@@ -186,7 +186,7 @@ export function HomeScreen() {
         >
           <View style={styles.modalBackdrop}>
             <View style={styles.modalCard}>
-              <Text style={styles.modalTitle}>You are signed in!</Text>
+              <Text style={styles.modalTitle}>You are checked-in!</Text>
               <Text style={styles.modalText}>Great job making it to halaqa today.</Text>
               <PrimaryButton
                 title="OK"
