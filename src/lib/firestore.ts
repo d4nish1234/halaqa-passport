@@ -34,6 +34,7 @@ function toDate(value: unknown): Date | null {
 export async function createParticipantProfile(
   profile: ParticipantProfile
 ): Promise<void> {
+  const timeZone = profile.timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
   const ref = doc(db, 'participants', profile.participantId);
   await setDoc(
     ref,
@@ -41,6 +42,7 @@ export async function createParticipantProfile(
       participantId: profile.participantId,
       nickname: profile.nickname,
       ageBand: profile.ageBand ?? null,
+      timeZone,
       createdAt: serverTimestamp(),
       lastSeenAt: serverTimestamp(),
     },
@@ -49,8 +51,9 @@ export async function createParticipantProfile(
 }
 
 export async function updateParticipantLastSeen(participantId: string): Promise<void> {
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const ref = doc(db, 'participants', participantId);
-  await setDoc(ref, { lastSeenAt: serverTimestamp() }, { merge: true });
+  await setDoc(ref, { lastSeenAt: serverTimestamp(), timeZone }, { merge: true });
 }
 
 export async function fetchParticipantNotificationStatus(

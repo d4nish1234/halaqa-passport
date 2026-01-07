@@ -43,10 +43,12 @@ export function OnboardingScreen() {
     setIsSubmitting(true);
 
     try {
+      const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const profile: ParticipantProfile = {
         participantId: Crypto.randomUUID(),
         nickname: trimmed,
         ageBand,
+        timeZone,
       };
       await saveProfile(profile);
       await createParticipantProfile(profile);

@@ -10,7 +10,8 @@ service cloud.firestore {
         'lastSeenAt',
         'expoPushToken',
         'notificationsEnabled',
-        'subscribedSeriesIds'
+        'subscribedSeriesIds',
+        'timeZone'
       ])
       && request.resource.data.participantId is string
       && request.resource.data.nickname is string
@@ -27,6 +28,10 @@ service cloud.firestore {
       && (
         !request.resource.data.keys().hasAny(['notificationsEnabled'])
         || request.resource.data.notificationsEnabled is bool
+      )
+      && (
+        !request.resource.data.keys().hasAny(['timeZone'])
+        || request.resource.data.timeZone is string
       )
       && (
         !request.resource.data.keys().hasAny(['subscribedSeriesIds'])

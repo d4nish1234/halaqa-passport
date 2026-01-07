@@ -2,6 +2,7 @@ import * as admin from 'firebase-admin';
 import * as functions from 'firebase-functions';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { Expo } from 'expo-server-sdk';
+import { createHash } from 'crypto';
 
 admin.initializeApp();
 
@@ -109,12 +110,31 @@ export const sendSessionReminders = onSchedule(
       data: { sessionId: string; seriesId: string };
     }[] = [];
     const logRefs: admin.firestore.DocumentReference[] = [];
+    const sentForSeries = new Set<string>();
+    const seriesNameCache = new Map<string, string>();
+    const timeFormatterCache = new Map<string, Intl.DateTimeFormat>();
+    const sessions = sessionsSnap.docs
+      .map((doc) => ({ id: doc.id, data: doc.data() }))
+      .sort((a, b) => {
+        const aStart = a.data.startAt?.toMillis?.() ?? 0;
+        const bStart = b.data.startAt?.toMillis?.() ?? 0;
+        return aStart - bStart;
+      });
 
-    for (const sessionDoc of sessionsSnap.docs) {
-      const session = sessionDoc.data();
+    for (const sessionEntry of sessions) {
+      const session = sessionEntry.data;
+      const sessionId = sessionEntry.id;
       const seriesId = session.seriesId as string | undefined;
       if (!seriesId) {
         continue;
+      }
+
+      let seriesName = seriesNameCache.get(seriesId);
+      if (!seriesName) {
+        const seriesSnap = await db.collection('series').doc(seriesId).get();
+        const seriesData = seriesSnap.data();
+        seriesName = (seriesData?.name as string | undefined) ?? seriesId;
+        seriesNameCache.set(seriesId, seriesName);
       }
 
       const participantsSnap = await db
@@ -130,9 +150,29 @@ export const sendSessionReminders = onSchedule(
           continue;
         }
 
+        const startAt = session.startAt?.toDate?.();
+        const timeZone =
+          (participant.timeZone as string | undefined) || 'UTC';
+        let formatter = timeFormatterCache.get(timeZone);
+        if (!formatter) {
+          formatter = new Intl.DateTimeFormat('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            timeZone,
+          });
+          timeFormatterCache.set(timeZone, formatter);
+        }
+        const startLabel = startAt ? formatter.format(startAt) : 'soon';
+
+        const tokenSeriesKey = `${seriesId}:${expoPushToken}`;
+        if (sentForSeries.has(tokenSeriesKey)) {
+          continue;
+        }
+
+        const tokenHash = createHash('sha256').update(expoPushToken).digest('hex');
         const logRef = db
           .collection('notificationLogs')
-          .doc(`${sessionDoc.id}_${participantDoc.id}`);
+          .doc(`${sessionId}_${seriesId}_${tokenHash}`);
         const existing = await logRef.get();
         if (existing.exists) {
           continue;
@@ -141,11 +181,12 @@ export const sendSessionReminders = onSchedule(
         messages.push({
           to: expoPushToken,
           sound: 'default',
-          title: 'Halaqa reminder',
-          body: 'Your session starts in a few hours.',
-          data: { sessionId: sessionDoc.id, seriesId },
+          title: `Halaqa reminder: ${seriesName}`,
+          body: `Your session starts at ${startLabel}.`,
+          data: { sessionId, seriesId },
         });
         logRefs.push(logRef);
+        sentForSeries.add(tokenSeriesKey);
       }
     }
 

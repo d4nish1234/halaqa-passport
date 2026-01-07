@@ -4,6 +4,7 @@ export type ParticipantProfile = {
   participantId: string;
   nickname: string;
   ageBand: AgeBand;
+  timeZone?: string | null;
 };
 
 export type ParticipantStats = {
