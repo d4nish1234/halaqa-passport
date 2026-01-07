@@ -33,11 +33,14 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.checkInSession = void 0;
+exports.sendSessionReminders = exports.checkInSession = void 0;
 const admin = __importStar(require("firebase-admin"));
 const functions = __importStar(require("firebase-functions"));
+const scheduler_1 = require("firebase-functions/v2/scheduler");
+const expo_server_sdk_1 = require("expo-server-sdk");
 admin.initializeApp();
 const db = admin.firestore();
+const expo = new expo_server_sdk_1.Expo();
 exports.checkInSession = functions.https.onCall(async (request) => {
     var _a, _b, _c, _d, _e, _f, _g;
     const { participantId, sessionId, seriesId, token } = request.data || {};
@@ -95,4 +98,68 @@ exports.checkInSession = functions.https.onCall(async (request) => {
         return { ok: false, message: 'Check-in failed. Please try again.' };
     }
     return { ok: true, message: 'Checked in!' };
+});
+exports.sendSessionReminders = (0, scheduler_1.onSchedule)({ schedule: 'every 2 hours', timeZone: 'UTC' }, async () => {
+    const now = admin.firestore.Timestamp.now();
+    const windowStart = admin.firestore.Timestamp.fromMillis(now.toMillis() + 4 * 60 * 60 * 1000);
+    const windowEnd = admin.firestore.Timestamp.fromMillis(now.toMillis() + 5 * 60 * 60 * 1000);
+    const sessionsSnap = await db
+        .collection('sessions')
+        .where('startAt', '>=', windowStart)
+        .where('startAt', '<', windowEnd)
+        .get();
+    if (sessionsSnap.empty) {
+        return;
+    }
+    const messages = [];
+    const logRefs = [];
+    for (const sessionDoc of sessionsSnap.docs) {
+        const session = sessionDoc.data();
+        const seriesId = session.seriesId;
+        if (!seriesId) {
+            continue;
+        }
+        const participantsSnap = await db
+            .collection('participants')
+            .where('notificationsEnabled', '==', true)
+            .where('subscribedSeriesIds', 'array-contains', seriesId)
+            .get();
+        for (const participantDoc of participantsSnap.docs) {
+            const participant = participantDoc.data();
+            const expoPushToken = participant.expoPushToken;
+            if (!expoPushToken || !expo_server_sdk_1.Expo.isExpoPushToken(expoPushToken)) {
+                continue;
+            }
+            const logRef = db
+                .collection('notificationLogs')
+                .doc(`${sessionDoc.id}_${participantDoc.id}`);
+            const existing = await logRef.get();
+            if (existing.exists) {
+                continue;
+            }
+            messages.push({
+                to: expoPushToken,
+                sound: 'default',
+                title: 'Halaqa reminder',
+                body: 'Your session starts in a few hours.',
+                data: { sessionId: sessionDoc.id, seriesId },
+            });
+            logRefs.push(logRef);
+        }
+    }
+    if (messages.length === 0) {
+        return;
+    }
+    const chunks = expo.chunkPushNotifications(messages);
+    for (const chunk of chunks) {
+        await expo.sendPushNotificationsAsync(chunk);
+    }
+    const batch = db.batch();
+    logRefs.forEach((ref) => {
+        batch.set(ref, {
+            sentAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+    });
+    await batch.commit();
+    return;
 });

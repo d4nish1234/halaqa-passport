@@ -8,7 +8,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { FooterNav } from '../components/FooterNav';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { useProfile } from '../context/ProfileContext';
-import { checkInSession } from '../lib/firestore';
+import { checkInSession, recordSeriesParticipation } from '../lib/firestore';
 import { parseSessionPayload } from '../lib/qr';
 import type { RootStackParamList } from '../navigation/RootNavigator';
 
@@ -81,7 +81,12 @@ export function ScanScreen() {
       });
       if (response.ok) {
         setIsScanningEnabled(false);
-        navigation.navigate('Home', { showCheckInSuccess: true });
+        recordSeriesParticipation(profile.participantId, payload.seriesId).catch((err) => {
+          console.warn('series:record:error', err);
+        });
+        navigation.navigate('Home', {
+          showCheckInSuccess: true,
+        });
         return;
       } else {
         setResultType('error');

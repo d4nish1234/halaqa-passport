@@ -7,7 +7,10 @@ service cloud.firestore {
         'nickname',
         'ageBand',
         'createdAt',
-        'lastSeenAt'
+        'lastSeenAt',
+        'expoPushToken',
+        'notificationsEnabled',
+        'subscribedSeriesIds'
       ])
       && request.resource.data.participantId is string
       && request.resource.data.nickname is string
@@ -15,6 +18,19 @@ service cloud.firestore {
         !request.resource.data.keys().hasAny(['ageBand'])
         || request.resource.data.ageBand == null
         || request.resource.data.ageBand is string
+      )
+      && (
+        !request.resource.data.keys().hasAny(['expoPushToken'])
+        || request.resource.data.expoPushToken == null
+        || request.resource.data.expoPushToken is string
+      )
+      && (
+        !request.resource.data.keys().hasAny(['notificationsEnabled'])
+        || request.resource.data.notificationsEnabled is bool
+      )
+      && (
+        !request.resource.data.keys().hasAny(['subscribedSeriesIds'])
+        || request.resource.data.subscribedSeriesIds is list
       )
       && request.resource.data.createdAt is timestamp
       && request.resource.data.lastSeenAt is timestamp;

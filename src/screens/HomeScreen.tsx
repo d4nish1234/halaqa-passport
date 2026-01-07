@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   Modal,
   Pressable,
@@ -22,10 +23,13 @@ import {
   fetchParticipantAttendanceDates,
   fetchParticipantAttendanceRecords,
   fetchParticipantAttendanceForSeries,
+  fetchParticipantNotificationStatus,
   fetchSeriesByIds,
   fetchSessionsForSeries,
+  enableNotifications,
   updateParticipantLastSeen,
 } from '../lib/firestore';
+import { registerForPushNotificationsAsync } from '../lib/notifications';
 import { calculateSeriesStreak, calculateTotals } from '../lib/stats';
 import { ParticipantStats, SeriesSummary } from '../types';
 import { RootStackParamList } from '../navigation/RootNavigator';
@@ -48,6 +52,9 @@ export function HomeScreen() {
   const [seriesSummaries, setSeriesSummaries] = useState<SeriesSummary[]>([]);
   const [currentSeries, setCurrentSeries] = useState<SeriesSummary | null>(null);
   const [isCheckInModalVisible, setIsCheckInModalVisible] = useState(false);
+  const [isEnablingReminders, setIsEnablingReminders] = useState(false);
+  const [isLoadingReminderStatus, setIsLoadingReminderStatus] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState<boolean | null>(null);
   const [confettiKey, setConfettiKey] = useState(0);
   const confettiOrigin = { x: Dimensions.get('window').width / 2, y: 0 };
   const badges = getBadges(stats);
@@ -155,15 +162,58 @@ export function HomeScreen() {
     useCallback(() => {
       if (route.params?.showCheckInSuccess) {
         setIsCheckInModalVisible(true);
+        setNotificationsEnabled(null);
         setConfettiKey((prev) => prev + 1);
         navigation.setParams({ showCheckInSuccess: undefined });
+
+        if (profile) {
+          setIsLoadingReminderStatus(true);
+          fetchParticipantNotificationStatus(profile.participantId)
+            .then((status) => {
+              setNotificationsEnabled(status.notificationsEnabled);
+            })
+            .catch(() => {
+              setNotificationsEnabled(false);
+            })
+            .finally(() => {
+              setIsLoadingReminderStatus(false);
+            });
+        }
       }
-    }, [navigation, route.params?.showCheckInSuccess])
+    }, [navigation, profile, route.params?.showCheckInSuccess])
   );
 
   if (!profile) {
     return null;
   }
+
+  const handleEnableReminders = async () => {
+    if (isEnablingReminders) {
+      setIsCheckInModalVisible(false);
+      return;
+    }
+
+    setIsEnablingReminders(true);
+
+    try {
+      const token = await registerForPushNotificationsAsync();
+      if (!token) {
+        Alert.alert(
+          'Notifications disabled',
+          'You can enable reminders later in Settings.'
+        );
+        return;
+      }
+
+      await enableNotifications(profile.participantId, token);
+      setNotificationsEnabled(true);
+      setIsCheckInModalVisible(false);
+    } catch (err) {
+      Alert.alert('Could not enable reminders', 'Please try again.');
+    } finally {
+      setIsEnablingReminders(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -188,10 +238,36 @@ export function HomeScreen() {
             <View style={styles.modalCard}>
               <Text style={styles.modalTitle}>You are checked-in!</Text>
               <Text style={styles.modalText}>Great job making it to halaqa today.</Text>
-              <PrimaryButton
-                title="OK"
-                onPress={() => setIsCheckInModalVisible(false)}
-              />
+              {isLoadingReminderStatus ? (
+                <ActivityIndicator />
+              ) : notificationsEnabled ? (
+                <Text style={styles.modalText}>
+                  Reminders are already enabled. You can manage them in Settings.
+                </Text>
+              ) : (
+                <Text style={styles.modalText}>
+                  Want reminders a few hours before sessions?
+                </Text>
+              )}
+              <View style={styles.modalActions}>
+                {!isLoadingReminderStatus && notificationsEnabled === false ? (
+                  <PrimaryButton
+                    title={isEnablingReminders ? 'Enabling...' : 'Enable reminders'}
+                    onPress={handleEnableReminders}
+                    disabled={isEnablingReminders}
+                  />
+                ) : null}
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.modalSecondaryButton,
+                    pressed && styles.modalSecondaryPressed,
+                  ]}
+                  onPress={() => setIsCheckInModalVisible(false)}
+                  disabled={isEnablingReminders}
+                >
+                  <Text style={styles.modalSecondaryText}>OK</Text>
+                </Pressable>
+              </View>
             </View>
           </View>
         </Modal>
@@ -500,6 +576,24 @@ const styles = StyleSheet.create({
   modalText: {
     color: '#3F5D52',
     textAlign: 'center',
+  },
+  modalActions: {
+    gap: 10,
+  },
+  modalSecondaryButton: {
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E3EAE4',
+    alignItems: 'center',
+  },
+  modalSecondaryPressed: {
+    opacity: 0.8,
+  },
+  modalSecondaryText: {
+    color: '#1B3A2E',
+    fontWeight: '600',
+    fontSize: 15,
   },
   confetti: {
     ...StyleSheet.absoluteFillObject,

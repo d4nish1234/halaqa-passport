@@ -4,10 +4,13 @@ import {
   doc,
   documentId,
   getDocs,
+  getDoc,
+  arrayUnion,
   limit,
   query,
   serverTimestamp,
   setDoc,
+  updateDoc,
   where,
 } from 'firebase/firestore';
 
@@ -48,6 +51,49 @@ export async function createParticipantProfile(
 export async function updateParticipantLastSeen(participantId: string): Promise<void> {
   const ref = doc(db, 'participants', participantId);
   await setDoc(ref, { lastSeenAt: serverTimestamp() }, { merge: true });
+}
+
+export async function fetchParticipantNotificationStatus(
+  participantId: string
+): Promise<{ notificationsEnabled: boolean }> {
+  const ref = doc(db, 'participants', participantId);
+  const snapshot = await getDoc(ref);
+  const data = snapshot.data();
+  return {
+    notificationsEnabled: Boolean(data?.notificationsEnabled),
+  };
+}
+
+export async function enableNotifications(
+  participantId: string,
+  expoPushToken: string
+): Promise<void> {
+  const ref = doc(db, 'participants', participantId);
+  await updateDoc(ref, {
+    expoPushToken,
+    notificationsEnabled: true,
+    lastSeenAt: serverTimestamp(),
+  });
+}
+
+export async function disableNotifications(participantId: string): Promise<void> {
+  const ref = doc(db, 'participants', participantId);
+  await updateDoc(ref, {
+    expoPushToken: null,
+    notificationsEnabled: false,
+    lastSeenAt: serverTimestamp(),
+  });
+}
+
+export async function recordSeriesParticipation(
+  participantId: string,
+  seriesId: string
+): Promise<void> {
+  const ref = doc(db, 'participants', participantId);
+  await updateDoc(ref, {
+    subscribedSeriesIds: arrayUnion(seriesId),
+    lastSeenAt: serverTimestamp(),
+  });
 }
 
 export async function fetchParticipantAttendanceDates(
