@@ -22,6 +22,7 @@ export type Series = {
   endDate?: Date | null;
   isActive?: boolean;
   completed?: boolean;
+  rewards?: number[];
 };
 
 export type Session = {
@@ -44,6 +45,8 @@ export type SeriesSummary = {
   lastAttendedAt: number | null;
   isActive: boolean;
   isCompleted: boolean;
+  rewards?: number[];
+  claimedRewards?: number[];
 };
 
 export type SessionPayload = {

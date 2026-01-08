@@ -1,13 +1,21 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Dimensions, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { FooterNav } from '../components/FooterNav';
+import { RewardClaimModal } from '../components/RewardClaimModal';
+import { RewardTracker } from '../components/RewardTracker';
 import { useProfile } from '../context/ProfileContext';
-import { fetchParticipantAttendanceRecords, fetchSeriesByIds } from '../lib/firestore';
+import {
+  claimSeriesReward,
+  fetchParticipantAttendanceRecords,
+  fetchParticipantRewardClaims,
+  fetchSeriesByIds,
+} from '../lib/firestore';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import type { SeriesSummary } from '../types';
+import ConfettiCannon from 'react-native-confetti-cannon';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Series'>;
 
@@ -17,6 +25,14 @@ export function SeriesScreen({ route }: Props) {
   const [series, setSeries] = useState<SeriesSummary[]>(providedSeries ?? []);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isClaimModalVisible, setIsClaimModalVisible] = useState(false);
+  const [claimSeriesId, setClaimSeriesId] = useState<string | null>(null);
+  const [claimSeriesName, setClaimSeriesName] = useState<string | null>(null);
+  const [claimRewardTarget, setClaimRewardTarget] = useState<number | null>(null);
+  const [isClaimingReward, setIsClaimingReward] = useState(false);
+  const [claimConfettiKey, setClaimConfettiKey] = useState(0);
+  const [isClaimConfettiVisible, setIsClaimConfettiVisible] = useState(false);
+  const confettiOrigin = { x: Dimensions.get('window').width / 2, y: 0 };
 
   useEffect(() => {
     if (providedSeries) {
@@ -33,9 +49,10 @@ export function SeriesScreen({ route }: Props) {
     setError(null);
 
     try {
-      const attendanceRecords = await fetchParticipantAttendanceRecords(
-        profile.participantId
-      );
+      const [attendanceRecords, rewardClaims] = await Promise.all([
+        fetchParticipantAttendanceRecords(profile.participantId),
+        fetchParticipantRewardClaims(profile.participantId),
+      ]);
 
       const seriesMap = new Map<string, { count: number; lastAttendedAt: number }>();
       attendanceRecords.forEach((record) => {
@@ -69,6 +86,8 @@ export function SeriesScreen({ route }: Props) {
           lastAttendedAt: entry?.lastAttendedAt ?? null,
           isActive: Boolean(seriesDoc?.isActive),
           isCompleted,
+          rewards: Array.isArray(seriesDoc?.rewards) ? seriesDoc?.rewards : undefined,
+          claimedRewards: rewardClaims[seriesId] ?? [],
         };
       });
 
@@ -90,9 +109,76 @@ export function SeriesScreen({ route }: Props) {
     }
   }, [loadSeries, route.params?.series]);
 
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    if (isClaimConfettiVisible) {
+      timeout = setTimeout(() => {
+        setIsClaimConfettiVisible(false);
+      }, 1800);
+    }
+    return () => {
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+    };
+  }, [isClaimConfettiVisible]);
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.page}>
+        {isClaimConfettiVisible ? (
+          <View style={styles.confetti} pointerEvents="none">
+            <ConfettiCannon
+              key={`claim-confetti-${claimConfettiKey}`}
+              count={80}
+              origin={confettiOrigin}
+              fadeOut
+            />
+          </View>
+        ) : null}
+        {claimSeriesName && claimRewardTarget !== null ? (
+          <RewardClaimModal
+            visible={isClaimModalVisible}
+            seriesName={claimSeriesName}
+            rewardTarget={claimRewardTarget}
+            isClaiming={isClaimingReward}
+            onClose={() => setIsClaimModalVisible(false)}
+            onConfirm={async () => {
+              if (!profile || !claimSeriesId || !claimRewardTarget) {
+                setIsClaimModalVisible(false);
+                return;
+              }
+
+              setIsClaimingReward(true);
+              try {
+                await claimSeriesReward(
+                  profile.participantId,
+                  claimSeriesId,
+                  claimRewardTarget
+                );
+                setSeries((prev) =>
+                  prev.map((item) =>
+                    item.id === claimSeriesId
+                      ? {
+                          ...item,
+                          claimedRewards: Array.from(
+                            new Set([...(item.claimedRewards ?? []), claimRewardTarget])
+                          ),
+                        }
+                      : item
+                  )
+                );
+                setClaimConfettiKey((prev) => prev + 1);
+                setIsClaimConfettiVisible(true);
+                setIsClaimModalVisible(false);
+              } catch (err) {
+                Alert.alert('Could not claim reward', 'Please try again.');
+              } finally {
+                setIsClaimingReward(false);
+              }
+            }}
+          />
+        ) : null}
         <ScrollView contentContainerStyle={styles.container}>
           <Text style={styles.title}>My Series</Text>
           <View style={styles.list}>
@@ -112,6 +198,17 @@ export function SeriesScreen({ route }: Props) {
                     <Text style={styles.seriesMeta}>
                       {item.sessionsAttended} sessions attended
                     </Text>
+                    <RewardTracker
+                      rewards={item.rewards}
+                      claimedRewards={item.claimedRewards}
+                      sessionsAttended={item.sessionsAttended}
+                      onClaimPress={(rewardTarget) => {
+                        setClaimSeriesId(item.id);
+                        setClaimSeriesName(item.name);
+                        setClaimRewardTarget(rewardTarget);
+                        setIsClaimModalVisible(true);
+                      }}
+                    />
                   </View>
                 ))
               : null}
@@ -183,6 +280,10 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 11,
     fontWeight: '700',
+  },
+  confetti: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 10,
   },
   emptyCard: {
     backgroundColor: '#fff',

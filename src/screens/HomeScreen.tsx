@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -16,6 +16,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { FooterNav } from '../components/FooterNav';
 import { PrimaryButton } from '../components/PrimaryButton';
+import { RewardClaimModal } from '../components/RewardClaimModal';
+import { RewardTracker } from '../components/RewardTracker';
 import { useProfile } from '../context/ProfileContext';
 import { getBadges } from '../lib/badges';
 import {
@@ -23,10 +25,12 @@ import {
   fetchParticipantAttendanceDates,
   fetchParticipantAttendanceRecords,
   fetchParticipantAttendanceForSeries,
+  fetchParticipantRewardClaims,
   fetchParticipantNotificationStatus,
   fetchSeriesByIds,
   fetchSessionsForSeries,
   enableNotifications,
+  claimSeriesReward,
   updateParticipantLastSeen,
 } from '../lib/firestore';
 import { registerForPushNotificationsAsync } from '../lib/notifications';
@@ -57,6 +61,13 @@ export function HomeScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = useState<boolean | null>(null);
   const [confettiKey, setConfettiKey] = useState(0);
   const confettiOrigin = { x: Dimensions.get('window').width / 2, y: 0 };
+  const [isClaimModalVisible, setIsClaimModalVisible] = useState(false);
+  const [claimSeriesId, setClaimSeriesId] = useState<string | null>(null);
+  const [claimSeriesName, setClaimSeriesName] = useState<string | null>(null);
+  const [claimRewardTarget, setClaimRewardTarget] = useState<number | null>(null);
+  const [isClaimingReward, setIsClaimingReward] = useState(false);
+  const [claimConfettiKey, setClaimConfettiKey] = useState(0);
+  const [isClaimConfettiVisible, setIsClaimConfettiVisible] = useState(false);
   const badges = getBadges(stats);
   const earnedBadges = badges.filter((badge) => badge.unlocked);
   const participantIdSuffix = profile?.participantId
@@ -74,10 +85,12 @@ export function HomeScreen() {
 
     try {
       await updateParticipantLastSeen(profile.participantId);
-      const [attendanceDates, attendanceRecords, activeSeries] = await Promise.all([
+      const [attendanceDates, attendanceRecords, activeSeries, rewardClaims] =
+        await Promise.all([
         fetchParticipantAttendanceDates(profile.participantId),
         fetchParticipantAttendanceRecords(profile.participantId),
         fetchActiveSeries(),
+        fetchParticipantRewardClaims(profile.participantId),
       ]);
 
       let currentStreak = 0;
@@ -127,6 +140,8 @@ export function HomeScreen() {
           lastAttendedAt: entry?.lastAttendedAt ?? null,
           isActive: Boolean(series?.isActive),
           isCompleted,
+          rewards: Array.isArray(series?.rewards) ? series?.rewards : undefined,
+          claimedRewards: rewardClaims[seriesId] ?? [],
         };
       });
 
@@ -183,6 +198,20 @@ export function HomeScreen() {
     }, [navigation, profile, route.params?.showCheckInSuccess])
   );
 
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    if (isClaimConfettiVisible) {
+      timeout = setTimeout(() => {
+        setIsClaimConfettiVisible(false);
+      }, 1800);
+    }
+    return () => {
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+    };
+  }, [isClaimConfettiVisible]);
+
   if (!profile) {
     return null;
   }
@@ -215,6 +244,54 @@ export function HomeScreen() {
     }
   };
 
+  const handleOpenClaimModal = (seriesId: string, seriesName: string, reward: number) => {
+    setClaimSeriesId(seriesId);
+    setClaimSeriesName(seriesName);
+    setClaimRewardTarget(reward);
+    setIsClaimModalVisible(true);
+  };
+
+  const handleClaimReward = async () => {
+    if (!profile || !claimSeriesId || !claimRewardTarget) {
+      setIsClaimModalVisible(false);
+      return;
+    }
+
+    setIsClaimingReward(true);
+    try {
+      await claimSeriesReward(profile.participantId, claimSeriesId, claimRewardTarget);
+      setSeriesSummaries((prev) =>
+        prev.map((item) =>
+          item.id === claimSeriesId
+            ? {
+                ...item,
+                claimedRewards: Array.from(
+                  new Set([...(item.claimedRewards ?? []), claimRewardTarget])
+                ),
+              }
+            : item
+        )
+      );
+      setCurrentSeries((prev) =>
+        prev && prev.id === claimSeriesId
+          ? {
+              ...prev,
+              claimedRewards: Array.from(
+                new Set([...(prev.claimedRewards ?? []), claimRewardTarget])
+              ),
+            }
+          : prev
+      );
+      setClaimConfettiKey((prev) => prev + 1);
+      setIsClaimConfettiVisible(true);
+      setIsClaimModalVisible(false);
+    } catch (err) {
+      Alert.alert('Could not claim reward', 'Please try again.');
+    } finally {
+      setIsClaimingReward(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.page}>
@@ -223,6 +300,16 @@ export function HomeScreen() {
             <ConfettiCannon
               key={`confetti-${confettiKey}`}
               count={120}
+              origin={confettiOrigin}
+              fadeOut
+            />
+          </View>
+        ) : null}
+        {isClaimConfettiVisible ? (
+          <View style={styles.confetti} pointerEvents="none">
+            <ConfettiCannon
+              key={`claim-confetti-${claimConfettiKey}`}
+              count={80}
               origin={confettiOrigin}
               fadeOut
             />
@@ -271,6 +358,16 @@ export function HomeScreen() {
             </View>
           </View>
         </Modal>
+        {claimSeriesName && claimRewardTarget !== null ? (
+          <RewardClaimModal
+            visible={isClaimModalVisible}
+            seriesName={claimSeriesName}
+            rewardTarget={claimRewardTarget}
+            isClaiming={isClaimingReward}
+            onClose={() => setIsClaimModalVisible(false)}
+            onConfirm={handleClaimReward}
+          />
+        ) : null}
         <ScrollView
           contentContainerStyle={styles.container}
           showsVerticalScrollIndicator={false}
@@ -305,6 +402,18 @@ export function HomeScreen() {
                 <Text style={styles.seriesMeta}>
                   {currentSeries.sessionsAttended} sessions attended
                 </Text>
+                <RewardTracker
+                  rewards={currentSeries.rewards}
+                  claimedRewards={currentSeries.claimedRewards}
+                  sessionsAttended={currentSeries.sessionsAttended}
+                  onClaimPress={(rewardTarget) =>
+                    handleOpenClaimModal(
+                      currentSeries.id,
+                      currentSeries.name,
+                      rewardTarget
+                    )
+                  }
+                />
               </View>
             ) : (
               <View style={styles.seriesEmpty}>

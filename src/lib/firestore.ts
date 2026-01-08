@@ -5,6 +5,7 @@ import {
   documentId,
   getDocs,
   getDoc,
+  FieldPath,
   arrayUnion,
   limit,
   query,
@@ -99,6 +100,40 @@ export async function recordSeriesParticipation(
   });
 }
 
+export async function fetchParticipantRewardClaims(
+  participantId: string
+): Promise<Record<string, number[]>> {
+  const ref = doc(db, 'participants', participantId);
+  const snapshot = await getDoc(ref);
+  const data = snapshot.data();
+  const rewards = data?.rewards as Record<string, { claimed?: number[] }> | undefined;
+  if (!rewards) {
+    return {};
+  }
+
+  const claims: Record<string, number[]> = {};
+  Object.entries(rewards).forEach(([seriesId, entry]) => {
+    claims[seriesId] = Array.isArray(entry?.claimed) ? entry.claimed : [];
+  });
+  return claims;
+}
+
+export async function claimSeriesReward(
+  participantId: string,
+  seriesId: string,
+  rewardThreshold: number
+): Promise<void> {
+  const ref = doc(db, 'participants', participantId);
+  const claimedPath = new FieldPath('rewards', seriesId, 'claimed');
+  await updateDoc(
+    ref,
+    claimedPath,
+    arrayUnion(rewardThreshold),
+    'lastSeenAt',
+    serverTimestamp()
+  );
+}
+
 export async function fetchParticipantAttendanceDates(
   participantId: string
 ): Promise<Date[]> {
@@ -157,6 +192,7 @@ export async function fetchActiveSeries(): Promise<Series | null> {
     endDate: toDate(data.endDate),
     isActive: Boolean(data.isActive),
     completed: Boolean(data.completed),
+    rewards: Array.isArray(data.rewards) ? data.rewards : undefined,
   };
 }
 
@@ -185,6 +221,7 @@ export async function fetchSeriesByIds(seriesIds: string[]): Promise<Series[]> {
         endDate: toDate(data.endDate),
         isActive: Boolean(data.isActive),
         completed: Boolean(data.completed),
+        rewards: Array.isArray(data.rewards) ? data.rewards : undefined,
       });
     });
   }
