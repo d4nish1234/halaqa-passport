@@ -86,7 +86,7 @@ export const sendSessionReminders = onSchedule(
   async () => {
     const now = admin.firestore.Timestamp.now();
     const windowStart = admin.firestore.Timestamp.fromMillis(
-      now.toMillis() + 4 * 60 * 60 * 1000
+      now.toMillis()
     );
     const windowEnd = admin.firestore.Timestamp.fromMillis(
       now.toMillis() + 5 * 60 * 60 * 1000
@@ -196,7 +196,16 @@ export const sendSessionReminders = onSchedule(
 
     const chunks = expo.chunkPushNotifications(messages);
     for (const chunk of chunks) {
-      await expo.sendPushNotificationsAsync(chunk);
+      try {
+        const tickets = await expo.sendPushNotificationsAsync(chunk);
+        tickets.forEach((ticket) => {
+          if (ticket.status === 'error') {
+            console.error('reminders:send:error', ticket);
+          }
+        });
+      } catch (err) {
+        console.error('reminders:send:exception', err);
+      }
     }
 
     const batch = db.batch();

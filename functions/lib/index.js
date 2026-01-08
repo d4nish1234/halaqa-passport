@@ -103,7 +103,7 @@ exports.checkInSession = functions.https.onCall(async (request) => {
 exports.sendSessionReminders = (0, scheduler_1.onSchedule)({ schedule: 'every 2 hours', timeZone: 'UTC' }, async () => {
     var _a, _b, _c;
     const now = admin.firestore.Timestamp.now();
-    const windowStart = admin.firestore.Timestamp.fromMillis(now.toMillis() + 4 * 60 * 60 * 1000);
+    const windowStart = admin.firestore.Timestamp.fromMillis(now.toMillis());
     const windowEnd = admin.firestore.Timestamp.fromMillis(now.toMillis() + 5 * 60 * 60 * 1000);
     const sessionsSnap = await db
         .collection('sessions')
@@ -191,7 +191,17 @@ exports.sendSessionReminders = (0, scheduler_1.onSchedule)({ schedule: 'every 2 
     }
     const chunks = expo.chunkPushNotifications(messages);
     for (const chunk of chunks) {
-        await expo.sendPushNotificationsAsync(chunk);
+        try {
+            const tickets = await expo.sendPushNotificationsAsync(chunk);
+            tickets.forEach((ticket) => {
+                if (ticket.status === 'error') {
+                    console.error('reminders:send:error', ticket);
+                }
+            });
+        }
+        catch (err) {
+            console.error('reminders:send:exception', err);
+        }
     }
     const batch = db.batch();
     logRefs.forEach((ref) => {
