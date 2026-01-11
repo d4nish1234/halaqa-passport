@@ -43,6 +43,10 @@ export async function createParticipantProfile(
       participantId: profile.participantId,
       nickname: profile.nickname,
       ageBand: profile.ageBand ?? null,
+      ...(profile.avatarId ? { avatarId: profile.avatarId } : {}),
+      ...(typeof profile.avatarFormLevel === 'number'
+        ? { avatarFormLevel: profile.avatarFormLevel }
+        : {}),
       timeZone,
       createdAt: serverTimestamp(),
       lastSeenAt: serverTimestamp(),
@@ -96,6 +100,19 @@ export async function recordSeriesParticipation(
   const ref = doc(db, 'participants', participantId);
   await updateDoc(ref, {
     subscribedSeriesIds: arrayUnion(seriesId),
+    lastSeenAt: serverTimestamp(),
+  });
+}
+
+export async function updateParticipantAvatar(
+  participantId: string,
+  avatarId: string,
+  avatarFormLevel: number
+): Promise<void> {
+  const ref = doc(db, 'participants', participantId);
+  await updateDoc(ref, {
+    avatarId,
+    avatarFormLevel,
     lastSeenAt: serverTimestamp(),
   });
 }

@@ -5,6 +5,8 @@ export type ParticipantProfile = {
   nickname: string;
   ageBand: AgeBand;
   timeZone?: string | null;
+  avatarId?: string | null;
+  avatarFormLevel?: number | null;
 };
 
 export type ParticipantStats = {

@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   Dimensions,
+  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -19,6 +21,8 @@ import { PrimaryButton } from '../components/PrimaryButton';
 import { RewardClaimModal } from '../components/RewardClaimModal';
 import { RewardTracker } from '../components/RewardTracker';
 import { useProfile } from '../context/ProfileContext';
+import { getAvatarById } from '../lib/avatars';
+import { getAvatarLevelProgress } from '../lib/avatarProgress';
 import { getBadges } from '../lib/badges';
 import {
   fetchActiveSeries,
@@ -32,7 +36,9 @@ import {
   enableNotifications,
   claimSeriesReward,
   updateParticipantLastSeen,
+  updateParticipantAvatar,
 } from '../lib/firestore';
+import { saveProfile } from '../lib/storage';
 import { registerForPushNotificationsAsync } from '../lib/notifications';
 import { calculateSeriesStreak, calculateTotals } from '../lib/stats';
 import { ParticipantStats, SeriesSummary } from '../types';
@@ -41,7 +47,7 @@ import ConfettiCannon from 'react-native-confetti-cannon';
 import type { RouteProp } from '@react-navigation/native';
 
 export function HomeScreen() {
-  const { profile } = useProfile();
+  const { profile, setProfile } = useProfile();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'Home'>>();
   const [stats, setStats] = useState<ParticipantStats>({
@@ -68,12 +74,33 @@ export function HomeScreen() {
   const [isClaimingReward, setIsClaimingReward] = useState(false);
   const [claimConfettiKey, setClaimConfettiKey] = useState(0);
   const [isClaimConfettiVisible, setIsClaimConfettiVisible] = useState(false);
+  const avatarScale = useRef(new Animated.Value(1)).current;
+  const avatarOpacity = useRef(new Animated.Value(1)).current;
+  const evolvePulse = useRef(new Animated.Value(1)).current;
+  const sparkleOpacity = useRef(new Animated.Value(0)).current;
+  const [isEvolving, setIsEvolving] = useState(false);
   const badges = getBadges(stats);
   const earnedBadges = badges.filter((badge) => badge.unlocked);
   const participantIdSuffix = profile?.participantId
     ? profile.participantId.slice(-4)
     : '';
   const displayName = profile ? profile.nickname : '';
+  const avatar = useMemo(() => getAvatarById(profile?.avatarId ?? null), [profile?.avatarId]);
+  const avatarFormLevel = Math.max(1, profile?.avatarFormLevel ?? 1);
+  const avatarFormsCount = avatar?.forms.length ?? 0;
+  const avatarLevelProgress = useMemo(
+    () => getAvatarLevelProgress(stats.totalCheckIns),
+    [stats.totalCheckIns]
+  );
+  const maxFormLevel = avatar
+    ? Math.min(avatarLevelProgress.level, avatarFormsCount)
+    : 1;
+  const canEvolve = avatar && avatarFormLevel < maxFormLevel;
+  const avatarImage =
+    avatar && avatarFormsCount
+      ? avatar.forms[Math.min(avatarFormLevel, avatarFormsCount) - 1]
+      : null;
+  const nextLevelIn = Math.max(0, avatarLevelProgress.nextLevelAt - stats.totalCheckIns);
 
   const loadStats = useCallback(async () => {
     if (!profile) {
@@ -212,6 +239,65 @@ export function HomeScreen() {
     };
   }, [isClaimConfettiVisible]);
 
+  useEffect(() => {
+    if (!canEvolve) {
+      evolvePulse.stopAnimation();
+      evolvePulse.setValue(1);
+      return;
+    }
+
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(evolvePulse, {
+          toValue: 1.06,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+        Animated.timing(evolvePulse, {
+          toValue: 1,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [canEvolve, evolvePulse]);
+
+  useEffect(() => {
+    if (!isEvolving) {
+      sparkleOpacity.setValue(0);
+      return;
+    }
+
+    const animation = Animated.sequence([
+      Animated.timing(sparkleOpacity, {
+        toValue: 1,
+        duration: 180,
+        useNativeDriver: true,
+      }),
+      Animated.timing(sparkleOpacity, {
+        toValue: 0,
+        duration: 220,
+        useNativeDriver: true,
+      }),
+      Animated.timing(sparkleOpacity, {
+        toValue: 0.9,
+        duration: 160,
+        useNativeDriver: true,
+      }),
+      Animated.timing(sparkleOpacity, {
+        toValue: 0,
+        duration: 240,
+        useNativeDriver: true,
+      }),
+    ]);
+
+    animation.start(() => {
+      setIsEvolving(false);
+    });
+  }, [isEvolving, sparkleOpacity]);
+
   if (!profile) {
     return null;
   }
@@ -290,6 +376,57 @@ export function HomeScreen() {
     } finally {
       setIsClaimingReward(false);
     }
+  };
+
+  const handleEvolveAvatar = async () => {
+    if (!profile || !avatar || !canEvolve) {
+      return;
+    }
+
+    const nextFormLevel = Math.min(avatarFormLevel + 1, maxFormLevel);
+    if (nextFormLevel === avatarFormLevel) {
+      return;
+    }
+
+    setIsEvolving(true);
+    Animated.parallel([
+      Animated.timing(avatarOpacity, {
+        toValue: 0,
+        duration: 160,
+        useNativeDriver: true,
+      }),
+      Animated.timing(avatarScale, {
+        toValue: 0.92,
+        duration: 160,
+        useNativeDriver: true,
+      }),
+    ]).start(async () => {
+      const nextProfile = {
+        ...profile,
+        avatarFormLevel: nextFormLevel,
+      };
+
+      try {
+        await saveProfile(nextProfile);
+        await updateParticipantAvatar(profile.participantId, avatar.id, nextFormLevel);
+        setProfile(nextProfile);
+      } catch (err) {
+        Alert.alert('Could not evolve avatar', 'Please try again.');
+      } finally {
+        Animated.parallel([
+          Animated.timing(avatarOpacity, {
+            toValue: 1,
+            duration: 160,
+            useNativeDriver: true,
+          }),
+          Animated.timing(avatarScale, {
+            toValue: 1,
+            duration: 160,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      }
+    });
   };
 
   return (
@@ -421,6 +558,71 @@ export function HomeScreen() {
               </View>
             )}
           </View>
+          {avatar ? (
+            <View style={styles.avatarSection}>
+              <View style={styles.avatarImageCard}>
+                <Animated.View
+                  style={{
+                    transform: [{ scale: avatarScale }],
+                    opacity: avatarOpacity,
+                  }}
+                >
+                  {avatarImage ? (
+                    <Image source={avatarImage} style={styles.avatarImage} />
+                  ) : null}
+                </Animated.View>
+                {isEvolving ? (
+                  <Animated.View
+                    style={[
+                      styles.sparkleLayer,
+                      {
+                        opacity: sparkleOpacity,
+                        transform: [{ scale: 1.02 }],
+                      },
+                    ]}
+                    pointerEvents="none"
+                  >
+                    <Text style={[styles.sparkle, styles.sparkleOne]}>*</Text>
+                    <Text style={[styles.sparkle, styles.sparkleTwo]}>*</Text>
+                    <Text style={[styles.sparkle, styles.sparkleThree]}>*</Text>
+                    <Text style={[styles.sparkle, styles.sparkleFour]}>*</Text>
+                    <Text style={[styles.sparkle, styles.sparkleFive]}>*</Text>
+                    <Text style={[styles.sparkle, styles.sparkleSix]}>*</Text>
+                    <Text style={[styles.sparkle, styles.sparkleSeven]}>*</Text>
+                    <Text style={[styles.sparkle, styles.sparkleEight]}>*</Text>
+                    <Text style={[styles.sparkle, styles.sparkleNine]}>*</Text>
+                    <Text style={[styles.sparkle, styles.sparkleTen]}>*</Text>
+                    <Text style={[styles.sparkle, styles.sparkleEleven]}>*</Text>
+                    <Text style={[styles.sparkle, styles.sparkleTwelve]}>*</Text>
+                    <Text style={[styles.sparkle, styles.sparkleThirteen]}>*</Text>
+                  </Animated.View>
+                ) : null}
+              </View>
+              {canEvolve ? (
+                <Animated.View style={{ transform: [{ scale: evolvePulse }] }}>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.evolveButton,
+                      styles.evolveButtonReady,
+                      pressed && styles.evolveButtonPressed,
+                    ]}
+                    onPress={handleEvolveAvatar}
+                  >
+                    <Text style={styles.evolveButtonText}>Evolve</Text>
+                  </Pressable>
+                </Animated.View>
+              ) : null}
+              <View style={styles.avatarTextCard}>
+                <Text style={styles.avatarTitle}>{avatar.name}</Text>
+                <Text style={styles.avatarLevel}>Level {avatarLevelProgress.level}</Text>
+                <Text style={styles.avatarProgressText}>
+                  {nextLevelIn === 0
+                    ? 'Level up ready!'
+                    : `${nextLevelIn} check-ins to level ${avatarLevelProgress.level + 1}`}
+                </Text>
+              </View>
+            </View>
+          ) : null}
 
           {isLoading ? <ActivityIndicator /> : null}
           {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -547,6 +749,137 @@ const styles = StyleSheet.create({
   seriesEmptyText: {
     color: '#3F5D52',
     fontSize: 13,
+  },
+  avatarSection: {
+    alignItems: 'center',
+    gap: 12,
+  },
+  avatarTextCard: {
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    gap: 4,
+  },
+  avatarImageCard: {
+    padding: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 200,
+    height: 200,
+  },
+  avatarImage: {
+    width: 120,
+    height: 120,
+    resizeMode: 'contain',
+  },
+  avatarTitle: {
+    fontWeight: '700',
+    color: '#1B3A2E',
+    fontSize: 16,
+  },
+  avatarLevel: {
+    color: '#3F5D52',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  avatarProgressText: {
+    color: '#3F5D52',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  evolveButton: {
+    alignSelf: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: '#1E6F5C',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  evolveButtonReady: {
+    backgroundColor: '#2F8F72',
+  },
+  evolveButtonPressed: {
+    opacity: 0.8,
+  },
+  evolveButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 12,
+  },
+  sparkleLayer: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sparkle: {
+    position: 'absolute',
+    color: '#F4D98C',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  sparkleOne: {
+    top: 24,
+    left: 36,
+  },
+  sparkleTwo: {
+    top: 20,
+    right: 40,
+    fontSize: 14,
+  },
+  sparkleThree: {
+    bottom: 26,
+    left: 50,
+    fontSize: 12,
+  },
+  sparkleFour: {
+    bottom: 30,
+    right: 46,
+  },
+  sparkleFive: {
+    top: 40,
+    left: 90,
+    fontSize: 12,
+  },
+  sparkleSix: {
+    top: 60,
+    right: 70,
+    fontSize: 16,
+  },
+  sparkleSeven: {
+    bottom: 60,
+    left: 30,
+    fontSize: 10,
+  },
+  sparkleEight: {
+    bottom: 50,
+    right: 28,
+    fontSize: 18,
+  },
+  sparkleNine: {
+    top: 90,
+    left: 20,
+    fontSize: 12,
+  },
+  sparkleTen: {
+    top: 100,
+    right: 18,
+    fontSize: 14,
+  },
+  sparkleEleven: {
+    bottom: 90,
+    left: 80,
+    fontSize: 11,
+  },
+  sparkleTwelve: {
+    bottom: 80,
+    right: 90,
+    fontSize: 15,
+  },
+  sparkleThirteen: {
+    top: 120,
+    left: 120,
+    fontSize: 10,
   },
   error: {
     color: '#B42318',

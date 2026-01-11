@@ -12,7 +12,9 @@ service cloud.firestore {
         'notificationsEnabled',
         'subscribedSeriesIds',
         'timeZone',
-        'rewards'
+        'rewards',
+        'avatarId',
+        'avatarFormLevel'
       ])
       && request.resource.data.participantId is string
       && request.resource.data.nickname is string
@@ -41,6 +43,14 @@ service cloud.firestore {
       && (
         !request.resource.data.keys().hasAny(['rewards'])
         || request.resource.data.rewards is map
+      )
+      && (
+        !request.resource.data.keys().hasAny(['avatarId'])
+        || request.resource.data.avatarId is string
+      )
+      && (
+        !request.resource.data.keys().hasAny(['avatarFormLevel'])
+        || request.resource.data.avatarFormLevel is int
       )
       && request.resource.data.createdAt is timestamp
       && request.resource.data.lastSeenAt is timestamp;

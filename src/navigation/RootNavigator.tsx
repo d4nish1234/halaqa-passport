@@ -10,9 +10,11 @@ import { SettingsScreen } from '../screens/SettingsScreen';
 import type { ParticipantStats } from '../types';
 import type { SeriesSummary } from '../types';
 import { SeriesScreen } from '../screens/SeriesScreen';
+import { AvatarPickScreen } from '../screens/AvatarPickScreen';
 
 export type RootStackParamList = {
   Onboarding: undefined;
+  AvatarPick: undefined;
   Home: { showCheckInSuccess?: boolean };
   Scan: undefined;
   Badges: { stats?: ParticipantStats };
@@ -42,11 +44,29 @@ export function RootNavigator() {
     >
       {profile ? (
         <>
-          <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Halaqa Passport' }} />
-          <Stack.Screen name="Scan" component={ScanScreen} options={{ title: 'Scan QR' }} />
-          <Stack.Screen name="Badges" component={BadgesScreen} options={{ title: 'Badges' }} />
-          <Stack.Screen name="Series" component={SeriesScreen} options={{ title: 'Series' }} />
-          <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
+          {profile.avatarId ? (
+            <>
+              <Stack.Screen
+                name="Home"
+                component={HomeScreen}
+                options={{ title: 'Halaqa Passport' }}
+              />
+              <Stack.Screen name="Scan" component={ScanScreen} options={{ title: 'Scan QR' }} />
+              <Stack.Screen name="Badges" component={BadgesScreen} options={{ title: 'Badges' }} />
+              <Stack.Screen name="Series" component={SeriesScreen} options={{ title: 'Series' }} />
+              <Stack.Screen
+                name="Settings"
+                component={SettingsScreen}
+                options={{ title: 'Settings' }}
+              />
+            </>
+          ) : (
+            <Stack.Screen
+              name="AvatarPick"
+              component={AvatarPickScreen}
+              options={{ title: 'Pick your avatar', headerBackVisible: false }}
+            />
+          )}
         </>
       ) : (
         <Stack.Screen
