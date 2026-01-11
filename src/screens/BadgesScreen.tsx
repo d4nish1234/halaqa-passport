@@ -106,10 +106,31 @@ export function BadgesScreen({ route }: Props) {
   const badges = getBadges(stats ?? statsFallback);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
       <View style={styles.page}>
         <ScrollView contentContainerStyle={styles.container}>
           <Text style={styles.title}>My Badges</Text>
+          <View style={styles.statsSection}>
+            <Text style={styles.sectionTitle}>My Stats</Text>
+            <View style={styles.card}>
+              <View style={styles.statRow}>
+                <Text style={styles.statLabel}>Total Check-ins</Text>
+                <Text style={styles.statValue}>{stats.totalCheckIns}</Text>
+              </View>
+              <View style={styles.statRow}>
+                <Text style={styles.statLabel}>Current Series Streak</Text>
+                <Text style={styles.statValue}>{stats.currentStreak} sessions</Text>
+              </View>
+              <View style={styles.statRow}>
+                <Text style={styles.statLabel}>Highest Series Streak</Text>
+                <Text style={styles.statValue}>{stats.highestStreak} sessions</Text>
+              </View>
+              <View style={styles.statRow}>
+                <Text style={styles.statLabel}>Last Check-in</Text>
+                <Text style={styles.statValue}>{stats.lastCheckInDate ?? 'Not yet'}</Text>
+              </View>
+            </View>
+          </View>
           <View style={styles.list}>
             {isLoading ? <ActivityIndicator /> : null}
             {!isLoading && error ? <Text style={styles.error}>{error}</Text> : null}
@@ -149,6 +170,7 @@ const styles = StyleSheet.create({
   container: {
     padding: 24,
     gap: 16,
+    paddingTop: 20,
     paddingBottom: 32,
   },
   title: {
@@ -158,6 +180,35 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: 12,
+  },
+  statsSection: {
+    gap: 10,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1B3A2E',
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    padding: 18,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#E3EAE4',
+  },
+  statRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  statLabel: {
+    color: '#3F5D52',
+    fontSize: 14,
+  },
+  statValue: {
+    fontWeight: '700',
+    color: '#1B3A2E',
+    fontSize: 16,
   },
   badgeCard: {
     width: '100%',

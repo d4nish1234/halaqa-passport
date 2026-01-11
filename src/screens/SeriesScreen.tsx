@@ -124,7 +124,7 @@ export function SeriesScreen({ route }: Props) {
   }, [isClaimConfettiVisible]);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
       <View style={styles.page}>
         {isClaimConfettiVisible ? (
           <View style={styles.confetti} pointerEvents="none">
@@ -236,6 +236,7 @@ const styles = StyleSheet.create({
   container: {
     padding: 24,
     gap: 16,
+    paddingTop: 20,
     paddingBottom: 32,
   },
   title: {

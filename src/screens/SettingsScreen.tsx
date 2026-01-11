@@ -103,7 +103,7 @@ export function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
       <View style={styles.page}>
         <View style={styles.content}>
           <Text style={styles.title}>Settings</Text>
@@ -167,6 +167,7 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 24,
     gap: 8,
+    paddingTop: 20,
   },
   title: {
     fontSize: 20,

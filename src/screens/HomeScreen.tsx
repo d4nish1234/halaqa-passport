@@ -293,7 +293,7 @@ export function HomeScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
       <View style={styles.page}>
         {isCheckInModalVisible ? (
           <View style={styles.confetti} pointerEvents="none">
@@ -377,7 +377,7 @@ export function HomeScreen() {
             {participantIdSuffix ? (
               <Text style={styles.userId}>User id: {participantIdSuffix}</Text>
             ) : null}
-            <Text style={styles.subtitle}>Ready for another check-in?</Text>
+            <Text style={styles.subtitle}>Tap Scan to check in with the QR.</Text>
           </View>
 
           <View style={styles.seriesSection}>
@@ -422,56 +422,6 @@ export function HomeScreen() {
             )}
           </View>
 
-          <View style={styles.badgeSection}>
-            <View style={styles.badgeHeader}>
-              <Text style={styles.badgeTitle}>My Badges</Text>
-              <Pressable onPress={() => navigation.navigate('Badges', { stats })}>
-                <Text style={styles.badgeLink}>View All</Text>
-              </Pressable>
-            </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.badgeRow}
-            >
-              {earnedBadges.length ? (
-                earnedBadges.map((badge) => (
-                  <View key={badge.id} style={[styles.badgeCard, styles.badgeUnlocked]}>
-                    <Text style={styles.badgeName}>{badge.title}</Text>
-                    <Text style={styles.badgeDescription}>{badge.description}</Text>
-                  </View>
-                ))
-              ) : (
-                <View style={[styles.badgeCard, styles.badgeEmpty]}>
-                  <Text style={styles.badgeEmptyTitle}>No badges yet</Text>
-                  <Text style={styles.badgeDescription}>Check in to start earning.</Text>
-                </View>
-              )}
-            </ScrollView>
-          </View>
-
-          <View style={styles.statsSection}>
-            <Text style={styles.sectionTitle}>My Stats</Text>
-            <View style={styles.card}>
-              <View style={styles.statRow}>
-                <Text style={styles.statLabel}>Total Check-ins</Text>
-                <Text style={styles.statValue}>{stats.totalCheckIns}</Text>
-              </View>
-              <View style={styles.statRow}>
-                <Text style={styles.statLabel}>Current Series Streak</Text>
-                <Text style={styles.statValue}>{stats.currentStreak} sessions</Text>
-              </View>
-              <View style={styles.statRow}>
-                <Text style={styles.statLabel}>Highest Series Streak</Text>
-                <Text style={styles.statValue}>{stats.highestStreak} sessions</Text>
-              </View>
-              <View style={styles.statRow}>
-                <Text style={styles.statLabel}>Last Check-in</Text>
-                <Text style={styles.statValue}>{stats.lastCheckInDate ?? 'Not yet'}</Text>
-              </View>
-            </View>
-          </View>
-
           {isLoading ? <ActivityIndicator /> : null}
           {error ? <Text style={styles.error}>{error}</Text> : null}
         </ScrollView>
@@ -491,7 +441,7 @@ const styles = StyleSheet.create({
   },
   container: {
     paddingHorizontal: 24,
-    paddingTop: 8,
+    paddingTop: 10,
     gap: 24,
     paddingBottom: 24,
   },
@@ -503,7 +453,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1B3A2E',
     lineHeight: 30,
-    paddingTop: 2,
+    paddingTop: 10,
   },
   subtitle: {
     color: '#3F5D52',
@@ -534,17 +484,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1B3A2E',
     fontSize: 16,
-  },
-  badgeSection: {
-    gap: 10,
-  },
-  statsSection: {
-    gap: 10,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1B3A2E',
   },
   seriesSection: {
     gap: 10,
@@ -608,54 +547,6 @@ const styles = StyleSheet.create({
   seriesEmptyText: {
     color: '#3F5D52',
     fontSize: 13,
-  },
-  badgeHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  badgeTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1B3A2E',
-  },
-  badgeLink: {
-    color: '#1E6F5C',
-    fontWeight: '600',
-  },
-  badgeRow: {
-    paddingBottom: 4,
-  },
-  badgeCard: {
-    width: 180,
-    padding: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginRight: 12,
-  },
-  badgeUnlocked: {
-    backgroundColor: '#FFF6DA',
-    borderColor: '#F4D98C',
-  },
-  badgeLocked: {
-    backgroundColor: '#EEF1EE',
-    borderColor: '#D8E1D8',
-  },
-  badgeEmpty: {
-    backgroundColor: '#FFF6DA',
-    borderColor: '#F4D98C',
-  },
-  badgeName: {
-    fontWeight: '700',
-    color: '#1B3A2E',
-  },
-  badgeEmptyTitle: {
-    fontWeight: '700',
-    color: '#1B3A2E',
-  },
-  badgeDescription: {
-    fontSize: 12,
-    color: '#3F5D52',
   },
   error: {
     color: '#B42318',

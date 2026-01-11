@@ -102,7 +102,7 @@ export function ScanScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
       <View style={styles.page}>
         <View style={styles.cameraWrapper}>
           <CameraView
@@ -194,6 +194,7 @@ const styles = StyleSheet.create({
   bottomSheet: {
     backgroundColor: '#F7F2EA',
     padding: 20,
+    paddingTop: 10,
     gap: 12,
   },
   bottomTitle: {
