@@ -14,14 +14,25 @@ const plantForms = [
 ];
 
 const armadilloForms = [
-  require('../../assets/avatars/armadillo/01.png'),
-  require('../../assets/avatars/armadillo/02.png'),
-  require('../../assets/avatars/armadillo/03.png'),
-  require('../../assets/avatars/armadillo/04.png'),
-  require('../../assets/avatars/armadillo/05.png'),
-  require('../../assets/avatars/armadillo/06.png'),
-  require('../../assets/avatars/armadillo/07.png'),
-  require('../../assets/avatars/armadillo/08.png'),
+  require('../../assets/avatars/armadillo-1/01.png'),
+  require('../../assets/avatars/armadillo-1/02.png'),
+  require('../../assets/avatars/armadillo-1/03.png'),
+  require('../../assets/avatars/armadillo-1/04.png'),
+  require('../../assets/avatars/armadillo-1/05.png'),
+  require('../../assets/avatars/armadillo-1/06.png'),
+  require('../../assets/avatars/armadillo-1/07.png'),
+  require('../../assets/avatars/armadillo-1/08.png'),
+];
+
+const truckForms = [
+  require('../../assets/avatars/truck-1/01.png'),
+  require('../../assets/avatars/truck-1/02.png'),
+  require('../../assets/avatars/truck-1/03.png'),
+  require('../../assets/avatars/truck-1/04.png'),
+  require('../../assets/avatars/truck-1/05.png'),
+  require('../../assets/avatars/truck-1/06.png'),
+  require('../../assets/avatars/truck-1/07.png'),
+  require('../../assets/avatars/truck-1/08.png'),
 ];
 
 export type AvatarDefinition = {
@@ -40,6 +51,11 @@ export const avatars: AvatarDefinition[] = [
     id: 'armadillo',
     name: 'Armadillo',
     forms: armadilloForms,
+  },
+  {
+    id: 'truck-1',
+    name: 'Truck',
+    forms: truckForms,
   },
 ];
 
