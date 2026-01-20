@@ -1,18 +1,18 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
-import { KidProfile } from '../types';
+import { ParticipantProfile } from '../types';
 import { loadProfile } from '../lib/storage';
 
 type ProfileContextValue = {
-  profile: KidProfile | null;
-  setProfile: (profile: KidProfile | null) => void;
+  profile: ParticipantProfile | null;
+  setProfile: (profile: ParticipantProfile | null) => void;
   isLoading: boolean;
 };
 
 const ProfileContext = createContext<ProfileContextValue | undefined>(undefined);
 
 export function ProfileProvider({ children }: { children: React.ReactNode }) {
-  const [profile, setProfile] = useState<KidProfile | null>(null);
+  const [profile, setProfile] = useState<ParticipantProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {

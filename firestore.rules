@@ -1,0 +1,83 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isValidParticipant() {
+      return request.resource.data.keys().hasOnly([
+        'participantId',
+        'nickname',
+        'ageBand',
+        'createdAt',
+        'lastSeenAt',
+        'expoPushToken',
+        'notificationsEnabled',
+        'subscribedSeriesIds',
+        'timeZone',
+        'rewards',
+        'avatarId',
+        'avatarFormLevel'
+      ])
+      && request.resource.data.participantId is string
+      && request.resource.data.nickname is string
+      && (
+        !request.resource.data.keys().hasAny(['ageBand'])
+        || request.resource.data.ageBand == null
+        || request.resource.data.ageBand is string
+      )
+      && (
+        !request.resource.data.keys().hasAny(['expoPushToken'])
+        || request.resource.data.expoPushToken == null
+        || request.resource.data.expoPushToken is string
+      )
+      && (
+        !request.resource.data.keys().hasAny(['notificationsEnabled'])
+        || request.resource.data.notificationsEnabled is bool
+      )
+      && (
+        !request.resource.data.keys().hasAny(['timeZone'])
+        || request.resource.data.timeZone is string
+      )
+      && (
+        !request.resource.data.keys().hasAny(['subscribedSeriesIds'])
+        || request.resource.data.subscribedSeriesIds is list
+      )
+      && (
+        !request.resource.data.keys().hasAny(['rewards'])
+        || request.resource.data.rewards is map
+      )
+      && (
+        !request.resource.data.keys().hasAny(['avatarId'])
+        || request.resource.data.avatarId is string
+      )
+      && (
+        !request.resource.data.keys().hasAny(['avatarFormLevel'])
+        || request.resource.data.avatarFormLevel is int
+      )
+      && request.resource.data.createdAt is timestamp
+      && request.resource.data.lastSeenAt is timestamp;
+    }
+
+    match /series/{seriesId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /sessions/{sessionId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /participants/{participantId} {
+      allow read: if true;
+      allow create: if isValidParticipant()
+        && request.resource.data.participantId == participantId;
+      allow update: if isValidParticipant()
+        && request.resource.data.participantId == participantId;
+      allow delete: if false;
+    }
+
+    match /attendance/{attendanceId} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}

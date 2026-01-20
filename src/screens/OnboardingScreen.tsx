@@ -12,14 +12,17 @@ import * as Crypto from 'expo-crypto';
 
 import { PrimaryButton } from '../components/PrimaryButton';
 import { useProfile } from '../context/ProfileContext';
-import { createKidProfile } from '../lib/firestore';
+import { createParticipantProfile } from '../lib/firestore';
 import { saveProfile } from '../lib/storage';
-import { AgeBand, KidProfile } from '../types';
+import { AgeBand, ParticipantProfile } from '../types';
 
 const AGE_BANDS: { label: string; value: AgeBand }[] = [
-  { label: '7-9', value: '7-9' },
-  { label: '10-12', value: '10-12' },
-  { label: '13-15', value: '13-15' },
+  { label: '5-7', value: '5-7' },
+  { label: '8-10', value: '8-10' },
+  { label: '11-13', value: '11-13' },
+  { label: '14-17', value: '14-17' },
+  { label: '18-35', value: '18-35' },
+  { label: '36+', value: '36+' },
 ];
 
 export function OnboardingScreen() {
@@ -40,13 +43,15 @@ export function OnboardingScreen() {
     setIsSubmitting(true);
 
     try {
-      const profile: KidProfile = {
+      const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const profile: ParticipantProfile = {
         participantId: Crypto.randomUUID(),
         nickname: trimmed,
         ageBand,
+        timeZone,
       };
       await saveProfile(profile);
-      await createKidProfile(profile);
+      await createParticipantProfile(profile);
       setProfile(profile);
     } catch (err) {
       setError('Something went wrong. Please try again.');

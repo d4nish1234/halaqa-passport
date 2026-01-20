@@ -1,12 +1,15 @@
-export type AgeBand = '7-9' | '10-12' | '13-15' | null;
+export type AgeBand = '5-7' | '8-10' | '11-13' | '14-17' | '18-35' | '36+' | null;
 
-export type KidProfile = {
+export type ParticipantProfile = {
   participantId: string;
   nickname: string;
   ageBand: AgeBand;
+  timeZone?: string | null;
+  avatarId?: string | null;
+  avatarFormLevel?: number | null;
 };
 
-export type KidStats = {
+export type ParticipantStats = {
   totalCheckIns: number;
   currentStreak: number;
   highestStreak: number;
@@ -21,6 +24,7 @@ export type Series = {
   endDate?: Date | null;
   isActive?: boolean;
   completed?: boolean;
+  rewards?: number[];
 };
 
 export type Session = {
@@ -43,6 +47,8 @@ export type SeriesSummary = {
   lastAttendedAt: number | null;
   isActive: boolean;
   isCompleted: boolean;
+  rewards?: number[];
+  claimedRewards?: number[];
 };
 
 export type SessionPayload = {

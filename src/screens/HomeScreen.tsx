@@ -1,6 +1,11 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
+  Animated,
+  Dimensions,
+  Image,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -8,29 +13,44 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
+import { FooterNav } from '../components/FooterNav';
 import { PrimaryButton } from '../components/PrimaryButton';
+import { RewardClaimModal } from '../components/RewardClaimModal';
+import { RewardTracker } from '../components/RewardTracker';
 import { useProfile } from '../context/ProfileContext';
+import { getAvatarById } from '../lib/avatars';
+import { getAvatarLevelProgress } from '../lib/avatarProgress';
 import { getBadges } from '../lib/badges';
 import {
   fetchActiveSeries,
-  fetchAttendanceDates,
-  fetchAttendanceRecords,
-  fetchAttendanceForSeries,
+  fetchParticipantAttendanceDates,
+  fetchParticipantAttendanceRecords,
+  fetchParticipantAttendanceForSeries,
+  fetchParticipantRewardClaims,
+  fetchParticipantNotificationStatus,
   fetchSeriesByIds,
   fetchSessionsForSeries,
-  updateLastSeen,
+  enableNotifications,
+  claimSeriesReward,
+  updateParticipantLastSeen,
+  updateParticipantAvatar,
 } from '../lib/firestore';
+import { saveProfile } from '../lib/storage';
+import { registerForPushNotificationsAsync } from '../lib/notifications';
 import { calculateSeriesStreak, calculateTotals } from '../lib/stats';
-import { KidStats, SeriesSummary } from '../types';
+import { ParticipantStats, SeriesSummary } from '../types';
 import { RootStackParamList } from '../navigation/RootNavigator';
+import ConfettiCannon from 'react-native-confetti-cannon';
+import type { RouteProp } from '@react-navigation/native';
 
 export function HomeScreen() {
-  const { profile } = useProfile();
+  const { profile, setProfile } = useProfile();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const [stats, setStats] = useState<KidStats>({
+  const route = useRoute<RouteProp<RootStackParamList, 'Home'>>();
+  const [stats, setStats] = useState<ParticipantStats>({
     totalCheckIns: 0,
     currentStreak: 0,
     highestStreak: 0,
@@ -41,12 +61,46 @@ export function HomeScreen() {
   const [error, setError] = useState<string | null>(null);
   const [seriesSummaries, setSeriesSummaries] = useState<SeriesSummary[]>([]);
   const [currentSeries, setCurrentSeries] = useState<SeriesSummary | null>(null);
+  const [isCheckInModalVisible, setIsCheckInModalVisible] = useState(false);
+  const [isEnablingReminders, setIsEnablingReminders] = useState(false);
+  const [isLoadingReminderStatus, setIsLoadingReminderStatus] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState<boolean | null>(null);
+  const [confettiKey, setConfettiKey] = useState(0);
+  const confettiOrigin = { x: Dimensions.get('window').width / 2, y: 0 };
+  const [isClaimModalVisible, setIsClaimModalVisible] = useState(false);
+  const [claimSeriesId, setClaimSeriesId] = useState<string | null>(null);
+  const [claimSeriesName, setClaimSeriesName] = useState<string | null>(null);
+  const [claimRewardTarget, setClaimRewardTarget] = useState<number | null>(null);
+  const [isClaimingReward, setIsClaimingReward] = useState(false);
+  const [claimConfettiKey, setClaimConfettiKey] = useState(0);
+  const [isClaimConfettiVisible, setIsClaimConfettiVisible] = useState(false);
+  const avatarScale = useRef(new Animated.Value(1)).current;
+  const avatarOpacity = useRef(new Animated.Value(1)).current;
+  const evolvePulse = useRef(new Animated.Value(1)).current;
+  const sparkleOpacity = useRef(new Animated.Value(0)).current;
+  const [isEvolving, setIsEvolving] = useState(false);
   const badges = getBadges(stats);
   const earnedBadges = badges.filter((badge) => badge.unlocked);
   const participantIdSuffix = profile?.participantId
     ? profile.participantId.slice(-4)
     : '';
-  const displayName = profile ? `${profile.nickname}-${participantIdSuffix}` : '';
+  const displayName = profile ? profile.nickname : '';
+  const avatar = useMemo(() => getAvatarById(profile?.avatarId ?? null), [profile?.avatarId]);
+  const avatarFormLevel = Math.max(1, profile?.avatarFormLevel ?? 1);
+  const avatarFormsCount = avatar?.forms.length ?? 0;
+  const avatarLevelProgress = useMemo(
+    () => getAvatarLevelProgress(stats.totalCheckIns),
+    [stats.totalCheckIns]
+  );
+  const maxFormLevel = avatar
+    ? Math.min(avatarLevelProgress.level, avatarFormsCount)
+    : 1;
+  const canEvolve = avatar && avatarFormLevel < maxFormLevel;
+  const avatarImage =
+    avatar && avatarFormsCount
+      ? avatar.forms[Math.min(avatarFormLevel, avatarFormsCount) - 1]
+      : null;
+  const nextLevelIn = Math.max(0, avatarLevelProgress.nextLevelAt - stats.totalCheckIns);
 
   const loadStats = useCallback(async () => {
     if (!profile) {
@@ -57,11 +111,13 @@ export function HomeScreen() {
     setError(null);
 
     try {
-      await updateLastSeen(profile.participantId);
-      const [attendanceDates, attendanceRecords, activeSeries] = await Promise.all([
-        fetchAttendanceDates(profile.participantId),
-        fetchAttendanceRecords(profile.participantId),
+      await updateParticipantLastSeen(profile.participantId);
+      const [attendanceDates, attendanceRecords, activeSeries, rewardClaims] =
+        await Promise.all([
+        fetchParticipantAttendanceDates(profile.participantId),
+        fetchParticipantAttendanceRecords(profile.participantId),
         fetchActiveSeries(),
+        fetchParticipantRewardClaims(profile.participantId),
       ]);
 
       let currentStreak = 0;
@@ -70,7 +126,7 @@ export function HomeScreen() {
       if (activeSeries) {
         const [sessions, attendance] = await Promise.all([
           fetchSessionsForSeries(activeSeries.id),
-          fetchAttendanceForSeries(profile.participantId, activeSeries.id),
+          fetchParticipantAttendanceForSeries(profile.participantId, activeSeries.id),
         ]);
         const streaks = calculateSeriesStreak(sessions, attendance);
         currentStreak = streaks.currentStreak;
@@ -111,6 +167,8 @@ export function HomeScreen() {
           lastAttendedAt: entry?.lastAttendedAt ?? null,
           isActive: Boolean(series?.isActive),
           isCompleted,
+          rewards: Array.isArray(series?.rewards) ? series?.rewards : undefined,
+          claimedRewards: rewardClaims[seriesId] ?? [],
         };
       });
 
@@ -142,105 +200,434 @@ export function HomeScreen() {
     }, [loadStats])
   );
 
+  useFocusEffect(
+    useCallback(() => {
+      if (route.params?.showCheckInSuccess) {
+        setIsCheckInModalVisible(true);
+        setNotificationsEnabled(null);
+        setConfettiKey((prev) => prev + 1);
+        navigation.setParams({ showCheckInSuccess: undefined });
+
+        if (profile) {
+          setIsLoadingReminderStatus(true);
+          fetchParticipantNotificationStatus(profile.participantId)
+            .then((status) => {
+              setNotificationsEnabled(status.notificationsEnabled);
+            })
+            .catch(() => {
+              setNotificationsEnabled(false);
+            })
+            .finally(() => {
+              setIsLoadingReminderStatus(false);
+            });
+        }
+      }
+    }, [navigation, profile, route.params?.showCheckInSuccess])
+  );
+
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    if (isClaimConfettiVisible) {
+      timeout = setTimeout(() => {
+        setIsClaimConfettiVisible(false);
+      }, 1800);
+    }
+    return () => {
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+    };
+  }, [isClaimConfettiVisible]);
+
+  useEffect(() => {
+    if (!canEvolve) {
+      evolvePulse.stopAnimation();
+      evolvePulse.setValue(1);
+      return;
+    }
+
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(evolvePulse, {
+          toValue: 1.06,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+        Animated.timing(evolvePulse, {
+          toValue: 1,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [canEvolve, evolvePulse]);
+
+  useEffect(() => {
+    if (!isEvolving) {
+      sparkleOpacity.setValue(0);
+      return;
+    }
+
+    const animation = Animated.sequence([
+      Animated.timing(sparkleOpacity, {
+        toValue: 1,
+        duration: 180,
+        useNativeDriver: true,
+      }),
+      Animated.timing(sparkleOpacity, {
+        toValue: 0,
+        duration: 220,
+        useNativeDriver: true,
+      }),
+      Animated.timing(sparkleOpacity, {
+        toValue: 0.9,
+        duration: 160,
+        useNativeDriver: true,
+      }),
+      Animated.timing(sparkleOpacity, {
+        toValue: 0,
+        duration: 240,
+        useNativeDriver: true,
+      }),
+    ]);
+
+    animation.start(() => {
+      setIsEvolving(false);
+    });
+  }, [isEvolving, sparkleOpacity]);
+
   if (!profile) {
     return null;
   }
 
+  const handleEnableReminders = async () => {
+    if (isEnablingReminders) {
+      setIsCheckInModalVisible(false);
+      return;
+    }
+
+    setIsEnablingReminders(true);
+
+    try {
+      const token = await registerForPushNotificationsAsync();
+      if (!token) {
+        Alert.alert(
+          'Notifications disabled',
+          'You can enable reminders later in Settings.'
+        );
+        return;
+      }
+
+      await enableNotifications(profile.participantId, token);
+      setNotificationsEnabled(true);
+      setIsCheckInModalVisible(false);
+    } catch (err) {
+      Alert.alert('Could not enable reminders', 'Please try again.');
+    } finally {
+      setIsEnablingReminders(false);
+    }
+  };
+
+  const handleOpenClaimModal = (seriesId: string, seriesName: string, reward: number) => {
+    setClaimSeriesId(seriesId);
+    setClaimSeriesName(seriesName);
+    setClaimRewardTarget(reward);
+    setIsClaimModalVisible(true);
+  };
+
+  const handleClaimReward = async () => {
+    if (!profile || !claimSeriesId || !claimRewardTarget) {
+      setIsClaimModalVisible(false);
+      return;
+    }
+
+    setIsClaimingReward(true);
+    try {
+      await claimSeriesReward(profile.participantId, claimSeriesId, claimRewardTarget);
+      setSeriesSummaries((prev) =>
+        prev.map((item) =>
+          item.id === claimSeriesId
+            ? {
+                ...item,
+                claimedRewards: Array.from(
+                  new Set([...(item.claimedRewards ?? []), claimRewardTarget])
+                ),
+              }
+            : item
+        )
+      );
+      setCurrentSeries((prev) =>
+        prev && prev.id === claimSeriesId
+          ? {
+              ...prev,
+              claimedRewards: Array.from(
+                new Set([...(prev.claimedRewards ?? []), claimRewardTarget])
+              ),
+            }
+          : prev
+      );
+      setClaimConfettiKey((prev) => prev + 1);
+      setIsClaimConfettiVisible(true);
+      setIsClaimModalVisible(false);
+    } catch (err) {
+      Alert.alert('Could not claim reward', 'Please try again.');
+    } finally {
+      setIsClaimingReward(false);
+    }
+  };
+
+  const handleEvolveAvatar = async () => {
+    if (!profile || !avatar || !canEvolve) {
+      return;
+    }
+
+    const nextFormLevel = Math.min(avatarFormLevel + 1, maxFormLevel);
+    if (nextFormLevel === avatarFormLevel) {
+      return;
+    }
+
+    setIsEvolving(true);
+    Animated.parallel([
+      Animated.timing(avatarOpacity, {
+        toValue: 0,
+        duration: 160,
+        useNativeDriver: true,
+      }),
+      Animated.timing(avatarScale, {
+        toValue: 0.92,
+        duration: 160,
+        useNativeDriver: true,
+      }),
+    ]).start(async () => {
+      const nextProfile = {
+        ...profile,
+        avatarFormLevel: nextFormLevel,
+      };
+
+      try {
+        await saveProfile(nextProfile);
+        await updateParticipantAvatar(profile.participantId, avatar.id, nextFormLevel);
+        setProfile(nextProfile);
+      } catch (err) {
+        Alert.alert('Could not evolve avatar', 'Please try again.');
+      } finally {
+        Animated.parallel([
+          Animated.timing(avatarOpacity, {
+            toValue: 1,
+            duration: 160,
+            useNativeDriver: true,
+          }),
+          Animated.timing(avatarScale, {
+            toValue: 1,
+            duration: 160,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      }
+    });
+  };
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.greeting}>Salaam, {displayName}!</Text>
-          <Text style={styles.subtitle}>Ready for another check-in?</Text>
-        </View>
-
-        <View style={styles.seriesSection}>
-          <View style={styles.seriesHeader}>
-            <Text style={styles.seriesTitle}>My Current Series</Text>
-            <Pressable
-              onPress={() => navigation.navigate('Series', { series: seriesSummaries })}
-            >
-              <Text style={styles.seriesLink}>View All</Text>
-            </Pressable>
+    <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
+      <View style={styles.page}>
+        {isCheckInModalVisible ? (
+          <View style={styles.confetti} pointerEvents="none">
+            <ConfettiCannon
+              key={`confetti-${confettiKey}`}
+              count={120}
+              origin={confettiOrigin}
+              fadeOut
+            />
           </View>
-          {currentSeries ? (
-            <View style={styles.seriesCard}>
-              <View style={styles.seriesTopRow}>
-                <Text style={styles.seriesName}>{currentSeries.name}</Text>
-                {currentSeries.isCompleted ? (
-                  <View style={styles.seriesPill}>
-                    <Text style={styles.seriesPillText}>Completed</Text>
-                  </View>
+        ) : null}
+        {isClaimConfettiVisible ? (
+          <View style={styles.confetti} pointerEvents="none">
+            <ConfettiCannon
+              key={`claim-confetti-${claimConfettiKey}`}
+              count={80}
+              origin={confettiOrigin}
+              fadeOut
+            />
+          </View>
+        ) : null}
+        <Modal
+          transparent
+          visible={isCheckInModalVisible}
+          animationType="fade"
+          onRequestClose={() => setIsCheckInModalVisible(false)}
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>You are checked-in!</Text>
+              <Text style={styles.modalText}>Great job making it to halaqa today.</Text>
+              {isLoadingReminderStatus ? (
+                <ActivityIndicator />
+              ) : notificationsEnabled ? (
+                <Text style={styles.modalText}>
+                  Reminders are already enabled. You can manage them in Settings.
+                </Text>
+              ) : (
+                <Text style={styles.modalText}>
+                  Want reminders a few hours before sessions?
+                </Text>
+              )}
+              <View style={styles.modalActions}>
+                {!isLoadingReminderStatus && notificationsEnabled === false ? (
+                  <PrimaryButton
+                    title={isEnablingReminders ? 'Enabling...' : 'Enable reminders'}
+                    onPress={handleEnableReminders}
+                    disabled={isEnablingReminders}
+                  />
                 ) : null}
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.modalSecondaryButton,
+                    pressed && styles.modalSecondaryPressed,
+                  ]}
+                  onPress={() => setIsCheckInModalVisible(false)}
+                  disabled={isEnablingReminders}
+                >
+                  <Text style={styles.modalSecondaryText}>OK</Text>
+                </Pressable>
               </View>
-              <Text style={styles.seriesMeta}>
-                {currentSeries.sessionsAttended} sessions attended
-              </Text>
             </View>
-          ) : (
-            <View style={styles.seriesEmpty}>
-              <Text style={styles.seriesEmptyText}>Scan QR code to join a series.</Text>
-            </View>
-          )}
-        </View>
-
-        <View style={styles.badgeSection}>
-          <View style={styles.badgeHeader}>
-            <Text style={styles.badgeTitle}>My Badges</Text>
-            <Pressable onPress={() => navigation.navigate('Badges', { stats })}>
-              <Text style={styles.badgeLink}>View All</Text>
-            </Pressable>
           </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.badgeRow}
-          >
-            {earnedBadges.length ? (
-              earnedBadges.map((badge) => (
-                <View key={badge.id} style={[styles.badgeCard, styles.badgeUnlocked]}>
-                  <Text style={styles.badgeName}>{badge.title}</Text>
-                  <Text style={styles.badgeDescription}>{badge.description}</Text>
+        </Modal>
+        {claimSeriesName && claimRewardTarget !== null ? (
+          <RewardClaimModal
+            visible={isClaimModalVisible}
+            seriesName={claimSeriesName}
+            rewardTarget={claimRewardTarget}
+            isClaiming={isClaimingReward}
+            onClose={() => setIsClaimModalVisible(false)}
+            onConfirm={handleClaimReward}
+          />
+        ) : null}
+        <ScrollView
+          contentContainerStyle={styles.container}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.header}>
+            <Text style={styles.greeting}>Salaam, {displayName}!</Text>
+            {participantIdSuffix ? (
+              <Text style={styles.userId}>User id: {participantIdSuffix}</Text>
+            ) : null}
+            <Text style={styles.subtitle}>Tap Scan to check in with the QR.</Text>
+          </View>
+
+          <View style={styles.seriesSection}>
+            <View style={styles.seriesHeader}>
+              <Text style={styles.seriesTitle}>My Recent Series</Text>
+              <Pressable
+                onPress={() => navigation.navigate('Series', { series: seriesSummaries })}
+              >
+                <Text style={styles.seriesLink}>View All</Text>
+              </Pressable>
+            </View>
+            {currentSeries ? (
+              <View style={styles.seriesCard}>
+                <View style={styles.seriesTopRow}>
+                  <Text style={styles.seriesName}>{currentSeries.name}</Text>
+                  {currentSeries.isCompleted ? (
+                    <View style={styles.seriesPill}>
+                      <Text style={styles.seriesPillText}>Completed</Text>
+                    </View>
+                  ) : null}
                 </View>
-              ))
+                <Text style={styles.seriesMeta}>
+                  {currentSeries.sessionsAttended} sessions attended
+                </Text>
+                <RewardTracker
+                  rewards={currentSeries.rewards}
+                  claimedRewards={currentSeries.claimedRewards}
+                  sessionsAttended={currentSeries.sessionsAttended}
+                  onClaimPress={(rewardTarget) =>
+                    handleOpenClaimModal(
+                      currentSeries.id,
+                      currentSeries.name,
+                      rewardTarget
+                    )
+                  }
+                />
+              </View>
             ) : (
-              <View style={[styles.badgeCard, styles.badgeEmpty]}>
-                <Text style={styles.badgeEmptyTitle}>No badges yet</Text>
-                <Text style={styles.badgeDescription}>Check in to start earning.</Text>
+              <View style={styles.seriesEmpty}>
+                <Text style={styles.seriesEmptyText}>Scan QR code to join a series.</Text>
               </View>
             )}
-          </ScrollView>
-        </View>
+          </View>
+          {avatar ? (
+            <View style={styles.avatarSection}>
+              <View style={styles.avatarImageCard}>
+                <Animated.View
+                  style={{
+                    transform: [{ scale: avatarScale }],
+                    opacity: avatarOpacity,
+                  }}
+                >
+                  {avatarImage ? (
+                    <Image source={avatarImage} style={styles.avatarImage} />
+                  ) : null}
+                </Animated.View>
+                {isEvolving ? (
+                  <Animated.View
+                    style={[
+                      styles.sparkleLayer,
+                      {
+                        opacity: sparkleOpacity,
+                        transform: [{ scale: 1.02 }],
+                      },
+                    ]}
+                    pointerEvents="none"
+                  >
+                    <Text style={[styles.sparkle, styles.sparkleOne]}>*</Text>
+                    <Text style={[styles.sparkle, styles.sparkleTwo]}>*</Text>
+                    <Text style={[styles.sparkle, styles.sparkleThree]}>*</Text>
+                    <Text style={[styles.sparkle, styles.sparkleFour]}>*</Text>
+                    <Text style={[styles.sparkle, styles.sparkleFive]}>*</Text>
+                    <Text style={[styles.sparkle, styles.sparkleSix]}>*</Text>
+                    <Text style={[styles.sparkle, styles.sparkleSeven]}>*</Text>
+                    <Text style={[styles.sparkle, styles.sparkleEight]}>*</Text>
+                    <Text style={[styles.sparkle, styles.sparkleNine]}>*</Text>
+                    <Text style={[styles.sparkle, styles.sparkleTen]}>*</Text>
+                    <Text style={[styles.sparkle, styles.sparkleEleven]}>*</Text>
+                    <Text style={[styles.sparkle, styles.sparkleTwelve]}>*</Text>
+                    <Text style={[styles.sparkle, styles.sparkleThirteen]}>*</Text>
+                  </Animated.View>
+                ) : null}
+              </View>
+              {canEvolve ? (
+                <Animated.View style={{ transform: [{ scale: evolvePulse }] }}>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.evolveButton,
+                      styles.evolveButtonReady,
+                      pressed && styles.evolveButtonPressed,
+                    ]}
+                    onPress={handleEvolveAvatar}
+                  >
+                    <Text style={styles.evolveButtonText}>Evolve</Text>
+                  </Pressable>
+                </Animated.View>
+              ) : null}
+              <View style={styles.avatarTextCard}>
+                <Text style={styles.avatarTitle}>{avatar.name}</Text>
+                <Text style={styles.avatarLevel}>Level {avatarLevelProgress.level}</Text>
+                <Text style={styles.avatarProgressText}>
+                  {nextLevelIn === 0
+                    ? 'Level up ready!'
+                    : `${nextLevelIn} check-ins to level ${avatarLevelProgress.level + 1}`}
+                </Text>
+              </View>
+            </View>
+          ) : null}
 
-        <View style={styles.statsSection}>
-          <Text style={styles.sectionTitle}>My Stats</Text>
-          <View style={styles.card}>
-          <View style={styles.statRow}>
-            <Text style={styles.statLabel}>Total Check-ins</Text>
-            <Text style={styles.statValue}>{stats.totalCheckIns}</Text>
-          </View>
-          <View style={styles.statRow}>
-            <Text style={styles.statLabel}>Current Series Streak</Text>
-            <Text style={styles.statValue}>{stats.currentStreak} sessions</Text>
-          </View>
-          <View style={styles.statRow}>
-            <Text style={styles.statLabel}>Highest Series Streak</Text>
-            <Text style={styles.statValue}>{stats.highestStreak} sessions</Text>
-          </View>
-          <View style={styles.statRow}>
-            <Text style={styles.statLabel}>Last Check-in</Text>
-            <Text style={styles.statValue}>{stats.lastCheckInDate ?? 'Not yet'}</Text>
-          </View>
-          </View>
-        </View>
-
-        {isLoading ? <ActivityIndicator /> : null}
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-
-        <PrimaryButton
-          title="Scan QR to Check In"
-          onPress={() => navigation.navigate('Scan')}
-        />
+          {isLoading ? <ActivityIndicator /> : null}
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+        </ScrollView>
+        <FooterNav stats={stats} series={seriesSummaries} />
       </View>
     </SafeAreaView>
   );
@@ -251,10 +638,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F7F2EA',
   },
-  container: {
+  page: {
     flex: 1,
-    padding: 24,
+  },
+  container: {
+    paddingHorizontal: 24,
+    paddingTop: 10,
     gap: 24,
+    paddingBottom: 24,
   },
   header: {
     gap: 6,
@@ -263,10 +654,17 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     color: '#1B3A2E',
+    lineHeight: 30,
+    paddingTop: 10,
   },
   subtitle: {
     color: '#3F5D52',
     fontSize: 15,
+  },
+  userId: {
+    color: '#3F5D52',
+    fontSize: 13,
+    fontWeight: '600',
   },
   card: {
     backgroundColor: '#fff',
@@ -288,17 +686,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1B3A2E',
     fontSize: 16,
-  },
-  badgeSection: {
-    gap: 10,
-  },
-  statsSection: {
-    gap: 10,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1B3A2E',
   },
   seriesSection: {
     gap: 10,
@@ -363,56 +750,186 @@ const styles = StyleSheet.create({
     color: '#3F5D52',
     fontSize: 13,
   },
-  badgeHeader: {
-    flexDirection: 'row',
+  avatarSection: {
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 12,
   },
-  badgeTitle: {
-    fontSize: 16,
+  avatarTextCard: {
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    gap: 4,
+  },
+  avatarImageCard: {
+    padding: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 200,
+    height: 200,
+  },
+  avatarImage: {
+    width: 120,
+    height: 120,
+    resizeMode: 'contain',
+  },
+  avatarTitle: {
     fontWeight: '700',
     color: '#1B3A2E',
+    fontSize: 16,
   },
-  badgeLink: {
-    color: '#1E6F5C',
+  avatarLevel: {
+    color: '#3F5D52',
+    fontSize: 14,
     fontWeight: '600',
   },
-  badgeRow: {
-    paddingBottom: 4,
-  },
-  badgeCard: {
-    width: 180,
-    padding: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginRight: 12,
-  },
-  badgeUnlocked: {
-    backgroundColor: '#FFF6DA',
-    borderColor: '#F4D98C',
-  },
-  badgeLocked: {
-    backgroundColor: '#EEF1EE',
-    borderColor: '#D8E1D8',
-  },
-  badgeEmpty: {
-    backgroundColor: '#FFF6DA',
-    borderColor: '#F4D98C',
-  },
-  badgeName: {
-    fontWeight: '700',
-    color: '#1B3A2E',
-  },
-  badgeEmptyTitle: {
-    fontWeight: '700',
-    color: '#1B3A2E',
-  },
-  badgeDescription: {
-    fontSize: 12,
+  avatarProgressText: {
     color: '#3F5D52',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  evolveButton: {
+    alignSelf: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: '#1E6F5C',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  evolveButtonReady: {
+    backgroundColor: '#2F8F72',
+  },
+  evolveButtonPressed: {
+    opacity: 0.8,
+  },
+  evolveButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 12,
+  },
+  sparkleLayer: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sparkle: {
+    position: 'absolute',
+    color: '#F4D98C',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  sparkleOne: {
+    top: 24,
+    left: 36,
+  },
+  sparkleTwo: {
+    top: 20,
+    right: 40,
+    fontSize: 14,
+  },
+  sparkleThree: {
+    bottom: 26,
+    left: 50,
+    fontSize: 12,
+  },
+  sparkleFour: {
+    bottom: 30,
+    right: 46,
+  },
+  sparkleFive: {
+    top: 40,
+    left: 90,
+    fontSize: 12,
+  },
+  sparkleSix: {
+    top: 60,
+    right: 70,
+    fontSize: 16,
+  },
+  sparkleSeven: {
+    bottom: 60,
+    left: 30,
+    fontSize: 10,
+  },
+  sparkleEight: {
+    bottom: 50,
+    right: 28,
+    fontSize: 18,
+  },
+  sparkleNine: {
+    top: 90,
+    left: 20,
+    fontSize: 12,
+  },
+  sparkleTen: {
+    top: 100,
+    right: 18,
+    fontSize: 14,
+  },
+  sparkleEleven: {
+    bottom: 90,
+    left: 80,
+    fontSize: 11,
+  },
+  sparkleTwelve: {
+    bottom: 80,
+    right: 90,
+    fontSize: 15,
+  },
+  sparkleThirteen: {
+    top: 120,
+    left: 120,
+    fontSize: 10,
   },
   error: {
     color: '#B42318',
     fontWeight: '600',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 28, 23, 0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    padding: 20,
+    gap: 12,
+    width: '100%',
+    maxWidth: 340,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1B3A2E',
+    textAlign: 'center',
+  },
+  modalText: {
+    color: '#3F5D52',
+    textAlign: 'center',
+  },
+  modalActions: {
+    gap: 10,
+  },
+  modalSecondaryButton: {
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E3EAE4',
+    alignItems: 'center',
+  },
+  modalSecondaryPressed: {
+    opacity: 0.8,
+  },
+  modalSecondaryText: {
+    color: '#1B3A2E',
+    fontWeight: '600',
+    fontSize: 15,
+  },
+  confetti: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 10,
   },
 });

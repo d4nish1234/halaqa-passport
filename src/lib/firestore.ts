@@ -4,17 +4,21 @@ import {
   doc,
   documentId,
   getDocs,
+  getDoc,
+  FieldPath,
+  arrayUnion,
   limit,
   query,
   serverTimestamp,
   setDoc,
+  updateDoc,
   where,
 } from 'firebase/firestore';
 
 import {
   AttendanceRecord,
   CheckInResult,
-  KidProfile,
+  ParticipantProfile,
   Series,
   Session,
   SessionPayload,
@@ -28,14 +32,22 @@ function toDate(value: unknown): Date | null {
   return null;
 }
 
-export async function createKidProfile(profile: KidProfile): Promise<void> {
+export async function createParticipantProfile(
+  profile: ParticipantProfile
+): Promise<void> {
+  const timeZone = profile.timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
   const ref = doc(db, 'participants', profile.participantId);
   await setDoc(
     ref,
     {
       participantId: profile.participantId,
       nickname: profile.nickname,
-      ageBand: profile.ageBand,
+      ageBand: profile.ageBand ?? null,
+      ...(profile.avatarId ? { avatarId: profile.avatarId } : {}),
+      ...(typeof profile.avatarFormLevel === 'number'
+        ? { avatarFormLevel: profile.avatarFormLevel }
+        : {}),
+      timeZone,
       createdAt: serverTimestamp(),
       lastSeenAt: serverTimestamp(),
     },
@@ -43,12 +55,105 @@ export async function createKidProfile(profile: KidProfile): Promise<void> {
   );
 }
 
-export async function updateLastSeen(participantId: string): Promise<void> {
+export async function updateParticipantLastSeen(participantId: string): Promise<void> {
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const ref = doc(db, 'participants', participantId);
-  await setDoc(ref, { lastSeenAt: serverTimestamp() }, { merge: true });
+  await setDoc(ref, { lastSeenAt: serverTimestamp(), timeZone }, { merge: true });
 }
 
-export async function fetchAttendanceDates(participantId: string): Promise<Date[]> {
+export async function fetchParticipantNotificationStatus(
+  participantId: string
+): Promise<{ notificationsEnabled: boolean }> {
+  const ref = doc(db, 'participants', participantId);
+  const snapshot = await getDoc(ref);
+  const data = snapshot.data();
+  return {
+    notificationsEnabled: Boolean(data?.notificationsEnabled),
+  };
+}
+
+export async function enableNotifications(
+  participantId: string,
+  expoPushToken: string
+): Promise<void> {
+  const ref = doc(db, 'participants', participantId);
+  await updateDoc(ref, {
+    expoPushToken,
+    notificationsEnabled: true,
+    lastSeenAt: serverTimestamp(),
+  });
+}
+
+export async function disableNotifications(participantId: string): Promise<void> {
+  const ref = doc(db, 'participants', participantId);
+  await updateDoc(ref, {
+    expoPushToken: null,
+    notificationsEnabled: false,
+    lastSeenAt: serverTimestamp(),
+  });
+}
+
+export async function recordSeriesParticipation(
+  participantId: string,
+  seriesId: string
+): Promise<void> {
+  const ref = doc(db, 'participants', participantId);
+  await updateDoc(ref, {
+    subscribedSeriesIds: arrayUnion(seriesId),
+    lastSeenAt: serverTimestamp(),
+  });
+}
+
+export async function updateParticipantAvatar(
+  participantId: string,
+  avatarId: string,
+  avatarFormLevel: number
+): Promise<void> {
+  const ref = doc(db, 'participants', participantId);
+  await updateDoc(ref, {
+    avatarId,
+    avatarFormLevel,
+    lastSeenAt: serverTimestamp(),
+  });
+}
+
+export async function fetchParticipantRewardClaims(
+  participantId: string
+): Promise<Record<string, number[]>> {
+  const ref = doc(db, 'participants', participantId);
+  const snapshot = await getDoc(ref);
+  const data = snapshot.data();
+  const rewards = data?.rewards as Record<string, { claimed?: number[] }> | undefined;
+  if (!rewards) {
+    return {};
+  }
+
+  const claims: Record<string, number[]> = {};
+  Object.entries(rewards).forEach(([seriesId, entry]) => {
+    claims[seriesId] = Array.isArray(entry?.claimed) ? entry.claimed : [];
+  });
+  return claims;
+}
+
+export async function claimSeriesReward(
+  participantId: string,
+  seriesId: string,
+  rewardThreshold: number
+): Promise<void> {
+  const ref = doc(db, 'participants', participantId);
+  const claimedPath = new FieldPath('rewards', seriesId, 'claimed');
+  await updateDoc(
+    ref,
+    claimedPath,
+    arrayUnion(rewardThreshold),
+    'lastSeenAt',
+    serverTimestamp()
+  );
+}
+
+export async function fetchParticipantAttendanceDates(
+  participantId: string
+): Promise<Date[]> {
   const attendanceRef = collection(db, 'attendance');
   const attendanceQuery = query(
     attendanceRef,
@@ -64,7 +169,7 @@ export async function fetchAttendanceDates(participantId: string): Promise<Date[
     .filter((date): date is Date => Boolean(date));
 }
 
-export async function fetchAttendanceRecords(
+export async function fetchParticipantAttendanceRecords(
   participantId: string
 ): Promise<AttendanceRecord[]> {
   const attendanceRef = collection(db, 'attendance');
@@ -104,6 +209,7 @@ export async function fetchActiveSeries(): Promise<Series | null> {
     endDate: toDate(data.endDate),
     isActive: Boolean(data.isActive),
     completed: Boolean(data.completed),
+    rewards: Array.isArray(data.rewards) ? data.rewards : undefined,
   };
 }
 
@@ -132,6 +238,7 @@ export async function fetchSeriesByIds(seriesIds: string[]): Promise<Series[]> {
         endDate: toDate(data.endDate),
         isActive: Boolean(data.isActive),
         completed: Boolean(data.completed),
+        rewards: Array.isArray(data.rewards) ? data.rewards : undefined,
       });
     });
   }
@@ -154,7 +261,7 @@ export async function fetchSessionsForSeries(seriesId: string): Promise<Session[
   });
 }
 
-export async function fetchAttendanceForSeries(
+export async function fetchParticipantAttendanceForSeries(
   participantId: string,
   seriesId: string
 ): Promise<AttendanceRecord[]> {

@@ -1,8 +1,8 @@
-import { AttendanceRecord, KidStats, Session } from '../types';
+import { AttendanceRecord, ParticipantStats, Session } from '../types';
 
 export function calculateTotals(
   attendanceDates: Date[]
-): Pick<KidStats, 'totalCheckIns' | 'lastCheckInDate'> {
+): Pick<ParticipantStats, 'totalCheckIns' | 'lastCheckInDate'> {
   if (attendanceDates.length === 0) {
     return {
       totalCheckIns: 0,
@@ -22,7 +22,7 @@ export function calculateTotals(
 export function calculateSeriesStreak(
   sessions: Session[],
   attendance: AttendanceRecord[]
-): Pick<KidStats, 'currentStreak' | 'highestStreak'> {
+): Pick<ParticipantStats, 'currentStreak' | 'highestStreak'> {
   if (sessions.length === 0) {
     return { currentStreak: 0, highestStreak: 0 };
   }

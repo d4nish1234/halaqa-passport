@@ -1,4 +1,4 @@
-import { KidStats } from '../types';
+import { ParticipantStats } from '../types';
 
 type Badge = {
   id: string;
@@ -7,7 +7,7 @@ type Badge = {
   unlocked: boolean;
 };
 
-export function getBadges(stats: KidStats): Badge[] {
+export function getBadges(stats: ParticipantStats): Badge[] {
   return [
     {
       id: 'first-checkin',
