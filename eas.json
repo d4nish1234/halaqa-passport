@@ -8,37 +8,37 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_FIREBASE_API_KEY": "REPLACE_ME",
-        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "REPLACE_ME",
-        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "REPLACE_ME",
-        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "REPLACE_ME",
-        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "REPLACE_ME",
-        "EXPO_PUBLIC_FIREBASE_APP_ID": "REPLACE_ME",
-        "EXPO_PUBLIC_FIREBASE_FUNCTIONS_REGION": "us-central1"
+          "EXPO_PUBLIC_FIREBASE_API_KEY":"AIzaSyDxI8XIfxFysAqWrZ2sSC5eyXSZciV_a5E",
+          "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN":"halaqa-passport.firebaseapp.com",
+          "EXPO_PUBLIC_FIREBASE_PROJECT_ID":"halaqa-passport",
+          "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET":"halaqa-passport.firebasestorage.app",
+          "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID":"1006245607510",
+          "EXPO_PUBLIC_FIREBASE_APP_ID":"1:1006245607510:web:1f0840c7e6f631412b23f7",
+          "EXPO_PUBLIC_FIREBASE_FUNCTIONS_REGION":"us-central1"
       }
     },
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_FIREBASE_API_KEY": "REPLACE_ME",
-        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "REPLACE_ME",
-        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "REPLACE_ME",
-        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "REPLACE_ME",
-        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "REPLACE_ME",
-        "EXPO_PUBLIC_FIREBASE_APP_ID": "REPLACE_ME",
-        "EXPO_PUBLIC_FIREBASE_FUNCTIONS_REGION": "us-central1"
+          "EXPO_PUBLIC_FIREBASE_API_KEY":"AIzaSyDxI8XIfxFysAqWrZ2sSC5eyXSZciV_a5E",
+          "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN":"halaqa-passport.firebaseapp.com",
+          "EXPO_PUBLIC_FIREBASE_PROJECT_ID":"halaqa-passport",
+          "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET":"halaqa-passport.firebasestorage.app",
+          "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID":"1006245607510",
+          "EXPO_PUBLIC_FIREBASE_APP_ID":"1:1006245607510:web:1f0840c7e6f631412b23f7",
+          "EXPO_PUBLIC_FIREBASE_FUNCTIONS_REGION":"us-central1"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_FIREBASE_API_KEY": "REPLACE_ME",
-        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "REPLACE_ME",
-        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "REPLACE_ME",
-        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "REPLACE_ME",
-        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "REPLACE_ME",
-        "EXPO_PUBLIC_FIREBASE_APP_ID": "REPLACE_ME",
-        "EXPO_PUBLIC_FIREBASE_FUNCTIONS_REGION": "us-central1"
+          "EXPO_PUBLIC_FIREBASE_API_KEY":"AIzaSyDxI8XIfxFysAqWrZ2sSC5eyXSZciV_a5E",
+          "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN":"halaqa-passport.firebaseapp.com",
+          "EXPO_PUBLIC_FIREBASE_PROJECT_ID":"halaqa-passport",
+          "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET":"halaqa-passport.firebasestorage.app",
+          "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID":"1006245607510",
+          "EXPO_PUBLIC_FIREBASE_APP_ID":"1:1006245607510:web:1f0840c7e6f631412b23f7",
+          "EXPO_PUBLIC_FIREBASE_FUNCTIONS_REGION":"us-central1"
       }
     }
   },

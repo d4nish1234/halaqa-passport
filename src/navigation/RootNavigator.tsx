@@ -59,6 +59,11 @@ export function RootNavigator() {
                 component={SettingsScreen}
                 options={{ title: 'Settings' }}
               />
+              <Stack.Screen
+                name="AvatarPick"
+                component={AvatarPickScreen}
+                options={{ title: 'Pick your avatar' }}
+              />
             </>
           ) : (
             <Stack.Screen

@@ -1,3 +1,44 @@
+
+const airplaneForms = [
+  require('../../assets/avatars/airplane-1/01.png'),
+  require('../../assets/avatars/airplane-1/02.png'),
+  require('../../assets/avatars/airplane-1/03.png'),
+  require('../../assets/avatars/airplane-1/04.png'),
+  require('../../assets/avatars/airplane-1/05.png'),
+  require('../../assets/avatars/airplane-1/06.png'),
+  require('../../assets/avatars/airplane-1/07.png'),
+  require('../../assets/avatars/airplane-1/08.png'),
+  require('../../assets/avatars/airplane-1/09.png'),
+  require('../../assets/avatars/airplane-1/10.png'),
+];
+
+
+const earthForms = [
+  require('../../assets/avatars/earth-1/01.png'),
+  require('../../assets/avatars/earth-1/02.png'),
+  require('../../assets/avatars/earth-1/03.png'),
+  require('../../assets/avatars/earth-1/04.png'),
+  require('../../assets/avatars/earth-1/05.png'),
+  require('../../assets/avatars/earth-1/06.png'),
+  require('../../assets/avatars/earth-1/07.png'),
+  require('../../assets/avatars/earth-1/08.png'),
+  require('../../assets/avatars/earth-1/09.png'),
+  require('../../assets/avatars/earth-1/10.png'),
+];
+
+const flowerForms = [
+  require('../../assets/avatars/flower-1/01.png'),
+  require('../../assets/avatars/flower-1/02.png'),
+  require('../../assets/avatars/flower-1/03.png'),
+  require('../../assets/avatars/flower-1/04.png'),
+  require('../../assets/avatars/flower-1/05.png'),
+  require('../../assets/avatars/flower-1/06.png'),
+  require('../../assets/avatars/flower-1/07.png'),
+  require('../../assets/avatars/flower-1/08.png'),
+  require('../../assets/avatars/flower-1/09.png'),
+  require('../../assets/avatars/flower-1/10.png'),
+];
+
 const plantForms = [
   require('../../assets/avatars/plant-1/01.png'),
   require('../../assets/avatars/plant-1/02.png'),
@@ -13,37 +54,17 @@ const plantForms = [
   require('../../assets/avatars/plant-1/12.png'),
 ];
 
-const armadilloForms = [
-  require('../../assets/avatars/armadillo-1/01.png'),
-  require('../../assets/avatars/armadillo-1/02.png'),
-  require('../../assets/avatars/armadillo-1/03.png'),
-  require('../../assets/avatars/armadillo-1/04.png'),
-  require('../../assets/avatars/armadillo-1/05.png'),
-  require('../../assets/avatars/armadillo-1/06.png'),
-  require('../../assets/avatars/armadillo-1/07.png'),
-  require('../../assets/avatars/armadillo-1/08.png'),
-];
-
-const truckForms = [
-  require('../../assets/avatars/truck-1/01.png'),
-  require('../../assets/avatars/truck-1/02.png'),
-  require('../../assets/avatars/truck-1/03.png'),
-  require('../../assets/avatars/truck-1/04.png'),
-  require('../../assets/avatars/truck-1/05.png'),
-  require('../../assets/avatars/truck-1/06.png'),
-  require('../../assets/avatars/truck-1/07.png'),
-  require('../../assets/avatars/truck-1/08.png'),
-];
-
-const carForms = [
-  require('../../assets/avatars/car-1/01.png'),
-  require('../../assets/avatars/car-1/02.png'),
-  require('../../assets/avatars/car-1/03.png'),
-  require('../../assets/avatars/car-1/04.png'),
-  require('../../assets/avatars/car-1/05.png'),
-  require('../../assets/avatars/car-1/06.png'),
-  require('../../assets/avatars/car-1/07.png'),
-  require('../../assets/avatars/car-1/08.png'),
+const robotForms = [
+  require('../../assets/avatars/robot-1/01.png'),
+  require('../../assets/avatars/robot-1/02.png'),
+  require('../../assets/avatars/robot-1/03.png'),
+  require('../../assets/avatars/robot-1/04.png'),
+  require('../../assets/avatars/robot-1/05.png'),
+  require('../../assets/avatars/robot-1/06.png'),
+  require('../../assets/avatars/robot-1/07.png'),
+  require('../../assets/avatars/robot-1/08.png'),
+  require('../../assets/avatars/robot-1/09.png'),
+  require('../../assets/avatars/robot-1/10.png'),
 ];
 
 const treeForms = [
@@ -81,19 +102,24 @@ export const avatars: AvatarDefinition[] = [
     forms: plantForms,
   },
   {
-    id: 'armadillo',
-    name: 'Armadillo',
-    forms: armadilloForms,
+    id: 'flower-1',
+    name: 'Flower',
+    forms: flowerForms,
   },
   {
-    id: 'truck-1',
-    name: 'Truck',
-    forms: truckForms,
+    id: 'airplane-1',
+    name: 'Airplane',
+    forms: airplaneForms,
   },
   {
-    id: 'car-1',
-    name: 'Car',
-    forms: carForms,
+    id: 'earth-1',
+    name: 'Earth',
+    forms: earthForms,
+  },
+  {
+    id: 'robot-1',
+    name: 'Robot',
+    forms: robotForms,
   },
   {
     id: 'tree-1',

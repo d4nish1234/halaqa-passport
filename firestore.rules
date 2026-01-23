@@ -8,13 +8,16 @@ service cloud.firestore {
         'ageBand',
         'createdAt',
         'lastSeenAt',
+        'experience',
         'expoPushToken',
         'notificationsEnabled',
         'subscribedSeriesIds',
         'timeZone',
         'rewards',
         'avatarId',
-        'avatarFormLevel'
+        'avatarFormLevel',
+        'avatarFormLevels',
+        'lastEvolvedExperience'
       ])
       && request.resource.data.participantId is string
       && request.resource.data.nickname is string
@@ -51,6 +54,18 @@ service cloud.firestore {
       && (
         !request.resource.data.keys().hasAny(['avatarFormLevel'])
         || request.resource.data.avatarFormLevel is int
+      )
+      && (
+        !request.resource.data.keys().hasAny(['avatarFormLevels'])
+        || request.resource.data.avatarFormLevels is list
+      )
+      && (
+        !request.resource.data.keys().hasAny(['lastEvolvedExperience'])
+        || request.resource.data.lastEvolvedExperience is int
+      )
+      && (
+        !request.resource.data.keys().hasAny(['experience'])
+        || request.resource.data.experience is int
       )
       && request.resource.data.createdAt is timestamp
       && request.resource.data.lastSeenAt is timestamp;

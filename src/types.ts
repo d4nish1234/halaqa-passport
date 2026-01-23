@@ -6,7 +6,8 @@ export type ParticipantProfile = {
   ageBand: AgeBand;
   timeZone?: string | null;
   avatarId?: string | null;
-  avatarFormLevel?: number | null;
+  avatarFormLevels?: { avatarId: string; formLevel: number }[] | null;
+  lastEvolvedExperience?: number | null;
 };
 
 export type ParticipantStats = {

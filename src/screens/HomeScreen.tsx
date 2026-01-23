@@ -29,6 +29,7 @@ import {
   fetchParticipantAttendanceDates,
   fetchParticipantAttendanceRecords,
   fetchParticipantAttendanceForSeries,
+  fetchParticipantExperience,
   fetchParticipantRewardClaims,
   fetchParticipantNotificationStatus,
   fetchSeriesByIds,
@@ -74,6 +75,7 @@ export function HomeScreen() {
   const [isClaimingReward, setIsClaimingReward] = useState(false);
   const [claimConfettiKey, setClaimConfettiKey] = useState(0);
   const [isClaimConfettiVisible, setIsClaimConfettiVisible] = useState(false);
+  const [experience, setExperience] = useState<number | null>(null);
   const avatarScale = useRef(new Animated.Value(1)).current;
   const avatarOpacity = useRef(new Animated.Value(1)).current;
   const evolvePulse = useRef(new Animated.Value(1)).current;
@@ -86,21 +88,27 @@ export function HomeScreen() {
     : '';
   const displayName = profile ? profile.nickname : '';
   const avatar = useMemo(() => getAvatarById(profile?.avatarId ?? null), [profile?.avatarId]);
-  const avatarFormLevel = Math.max(1, profile?.avatarFormLevel ?? 1);
-  const avatarFormsCount = avatar?.forms.length ?? 0;
-  const avatarLevelProgress = useMemo(
-    () => getAvatarLevelProgress(stats.totalCheckIns),
-    [stats.totalCheckIns]
+  const avatarFormEntry = profile?.avatarFormLevels?.find(
+    (entry) => entry.avatarId === profile?.avatarId
   );
-  const maxFormLevel = avatar
-    ? Math.min(avatarLevelProgress.level, avatarFormsCount)
-    : 1;
-  const canEvolve = avatar && avatarFormLevel < maxFormLevel;
+  const avatarFormLevel = Math.max(1, avatarFormEntry?.formLevel ?? 1);
+  const avatarFormsCount = avatar?.forms.length ?? 0;
+  const effectiveExperience = experience ?? stats.totalCheckIns;
+  const userLevelProgress = useMemo(
+    () => getAvatarLevelProgress(effectiveExperience),
+    [effectiveExperience]
+  );
+  const lastEvolvedExperience = profile?.lastEvolvedExperience ?? -1;
+  const canEvolve =
+    avatar &&
+    avatarFormLevel < avatarFormsCount &&
+    effectiveExperience > 0 &&
+    lastEvolvedExperience < effectiveExperience;
   const avatarImage =
     avatar && avatarFormsCount
       ? avatar.forms[Math.min(avatarFormLevel, avatarFormsCount) - 1]
       : null;
-  const nextLevelIn = Math.max(0, avatarLevelProgress.nextLevelAt - stats.totalCheckIns);
+  const nextLevelIn = Math.max(0, userLevelProgress.nextLevelAt - effectiveExperience);
 
   const loadStats = useCallback(async () => {
     if (!profile) {
@@ -112,12 +120,13 @@ export function HomeScreen() {
 
     try {
       await updateParticipantLastSeen(profile.participantId);
-      const [attendanceDates, attendanceRecords, activeSeries, rewardClaims] =
+      const [attendanceDates, attendanceRecords, activeSeries, rewardClaims, expValue] =
         await Promise.all([
         fetchParticipantAttendanceDates(profile.participantId),
         fetchParticipantAttendanceRecords(profile.participantId),
         fetchActiveSeries(),
         fetchParticipantRewardClaims(profile.participantId),
+        fetchParticipantExperience(profile.participantId),
       ]);
 
       let currentStreak = 0;
@@ -187,6 +196,7 @@ export function HomeScreen() {
         highestStreak,
         seriesParticipated,
       });
+      setExperience(expValue);
     } catch (err) {
       setError('We had trouble loading your stats.');
     } finally {
@@ -401,14 +411,29 @@ export function HomeScreen() {
         useNativeDriver: true,
       }),
     ]).start(async () => {
+      const nextFormLevels = Array.isArray(profile.avatarFormLevels)
+        ? profile.avatarFormLevels.map((entry) =>
+            entry.avatarId === avatar.id ? { ...entry, formLevel: nextFormLevel } : entry
+          )
+        : [];
+      const hasEntry = nextFormLevels.some((entry) => entry.avatarId === avatar.id);
+      if (!hasEntry) {
+        nextFormLevels.push({ avatarId: avatar.id, formLevel: nextFormLevel });
+      }
       const nextProfile = {
         ...profile,
-        avatarFormLevel: nextFormLevel,
+        avatarFormLevels: nextFormLevels,
+        lastEvolvedExperience: effectiveExperience,
       };
 
       try {
         await saveProfile(nextProfile);
-        await updateParticipantAvatar(profile.participantId, avatar.id, nextFormLevel);
+        await updateParticipantAvatar(
+          profile.participantId,
+          avatar.id,
+          nextFormLevels,
+          effectiveExperience
+        );
         setProfile(nextProfile);
       } catch (err) {
         Alert.alert('Could not evolve avatar', 'Please try again.');
@@ -514,6 +539,12 @@ export function HomeScreen() {
             {participantIdSuffix ? (
               <Text style={styles.userId}>User id: {participantIdSuffix}</Text>
             ) : null}
+            <Text style={styles.levelText}>Level {userLevelProgress.level}</Text>
+            <Text style={styles.levelProgressText}>
+              {nextLevelIn === 0
+                ? 'Level up ready!'
+                : `${nextLevelIn} check-ins to level ${userLevelProgress.level + 1}`}
+            </Text>
             <Text style={styles.subtitle}>Tap Scan to check in with the QR.</Text>
           </View>
 
@@ -614,12 +645,18 @@ export function HomeScreen() {
               ) : null}
               <View style={styles.avatarTextCard}>
                 <Text style={styles.avatarTitle}>{avatar.name}</Text>
-                <Text style={styles.avatarLevel}>Level {avatarLevelProgress.level}</Text>
-                <Text style={styles.avatarProgressText}>
-                  {nextLevelIn === 0
-                    ? 'Level up ready!'
-                    : `${nextLevelIn} check-ins to level ${avatarLevelProgress.level + 1}`}
+                <Text style={styles.avatarLevel}>
+                  Form {avatarFormLevel} of {avatarFormsCount}
                 </Text>
+                <Pressable
+                  onPress={() => navigation.navigate('AvatarPick')}
+                  style={({ pressed }) => [
+                    styles.changeAvatarButton,
+                    pressed && styles.changeAvatarButtonPressed,
+                  ]}
+                >
+                  <Text style={styles.changeAvatarText}>Change avatar</Text>
+                </Pressable>
               </View>
             </View>
           ) : null}
@@ -664,6 +701,16 @@ const styles = StyleSheet.create({
   userId: {
     color: '#3F5D52',
     fontSize: 13,
+    fontWeight: '600',
+  },
+  levelText: {
+    color: '#1B3A2E',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  levelProgressText: {
+    color: '#3F5D52',
+    fontSize: 12,
     fontWeight: '600',
   },
   card: {
@@ -782,8 +829,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  avatarProgressText: {
-    color: '#3F5D52',
+  changeAvatarButton: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    backgroundColor: '#E7EFE8',
+  },
+  changeAvatarButtonPressed: {
+    opacity: 0.8,
+  },
+  changeAvatarText: {
+    color: '#1B3A2E',
     fontSize: 12,
     fontWeight: '600',
   },

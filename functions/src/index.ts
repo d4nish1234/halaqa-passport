@@ -52,6 +52,7 @@ export const checkInSession = functions.https.onCall(async (request) => {
 
   const attendanceId = `${sessionId}_${participantId}`;
   const attendanceRef = db.collection('attendance').doc(attendanceId);
+  const participantRef = db.collection('participants').doc(participantId);
 
   try {
     await db.runTransaction(async (transaction) => {
@@ -66,6 +67,14 @@ export const checkInSession = functions.https.onCall(async (request) => {
         seriesId,
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
       });
+      transaction.set(
+        participantRef,
+        {
+          experience: admin.firestore.FieldValue.increment(1),
+          lastSeenAt: admin.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
     });
   } catch (error) {
     const errorCode =

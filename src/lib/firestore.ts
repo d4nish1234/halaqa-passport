@@ -44,8 +44,8 @@ export async function createParticipantProfile(
       nickname: profile.nickname,
       ageBand: profile.ageBand ?? null,
       ...(profile.avatarId ? { avatarId: profile.avatarId } : {}),
-      ...(typeof profile.avatarFormLevel === 'number'
-        ? { avatarFormLevel: profile.avatarFormLevel }
+      ...(Array.isArray(profile.avatarFormLevels)
+        ? { avatarFormLevels: profile.avatarFormLevels }
         : {}),
       timeZone,
       createdAt: serverTimestamp(),
@@ -107,14 +107,27 @@ export async function recordSeriesParticipation(
 export async function updateParticipantAvatar(
   participantId: string,
   avatarId: string,
-  avatarFormLevel: number
+  avatarFormLevels: { avatarId: string; formLevel: number }[],
+  lastEvolvedExperience?: number | null
 ): Promise<void> {
   const ref = doc(db, 'participants', participantId);
   await updateDoc(ref, {
     avatarId,
-    avatarFormLevel,
+    avatarFormLevels,
+    ...(typeof lastEvolvedExperience === 'number'
+      ? { lastEvolvedExperience }
+      : {}),
     lastSeenAt: serverTimestamp(),
   });
+}
+
+export async function fetchParticipantExperience(
+  participantId: string
+): Promise<number | null> {
+  const ref = doc(db, 'participants', participantId);
+  const snapshot = await getDoc(ref);
+  const data = snapshot.data();
+  return typeof data?.experience === 'number' ? data.experience : null;
 }
 
 export async function fetchParticipantRewardClaims(
