@@ -2,7 +2,7 @@
   "expo": {
     "name": "Halaqa Passport",
     "slug": "halaqa-passport",
-    "version": "1.0.1",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "buildNumber": "1.0.1",
+      "buildNumber": "1.1.0",
       "infoPlist": {
         "NSCameraUsageDescription": "Allow Halaqa Passport to scan QR codes for check-in.",
         "ITSAppUsesNonExemptEncryption": false
@@ -22,7 +22,6 @@
       "bundleIdentifier": "com.danishmahboob.halaqapassport"
     },
     "android": {
-      "versionCode": 2,
       "permissions": [
         "CAMERA"
       ],
