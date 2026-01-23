@@ -76,6 +76,8 @@ export function HomeScreen() {
   const [claimConfettiKey, setClaimConfettiKey] = useState(0);
   const [isClaimConfettiVisible, setIsClaimConfettiVisible] = useState(false);
   const [experience, setExperience] = useState<number | null>(null);
+  const [isEvolveHighlight, setIsEvolveHighlight] = useState(false);
+  const scrollRef = useRef<ScrollView | null>(null);
   const avatarScale = useRef(new Animated.Value(1)).current;
   const avatarOpacity = useRef(new Animated.Value(1)).current;
   const evolvePulse = useRef(new Animated.Value(1)).current;
@@ -274,6 +276,14 @@ export function HomeScreen() {
     return () => animation.stop();
   }, [canEvolve, evolvePulse]);
 
+  const handleEvolvePrompt = () => {
+    scrollRef.current?.scrollToEnd({ animated: true });
+    setIsEvolveHighlight(true);
+    setTimeout(() => {
+      setIsEvolveHighlight(false);
+    }, 2000);
+  };
+
   useEffect(() => {
     if (!isEvolving) {
       sparkleOpacity.setValue(0);
@@ -393,7 +403,7 @@ export function HomeScreen() {
       return;
     }
 
-    const nextFormLevel = Math.min(avatarFormLevel + 1, maxFormLevel);
+    const nextFormLevel = Math.min(avatarFormLevel + 1, avatarFormsCount);
     if (nextFormLevel === avatarFormLevel) {
       return;
     }
@@ -531,10 +541,22 @@ export function HomeScreen() {
           />
         ) : null}
         <ScrollView
+          ref={scrollRef}
           contentContainerStyle={styles.container}
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
+            {canEvolve ? (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.evolvePrompt,
+                  pressed && styles.evolvePromptPressed,
+                ]}
+                onPress={handleEvolvePrompt}
+              >
+                <Text style={styles.evolvePromptText}>Evolve your avatar!</Text>
+              </Pressable>
+            ) : null}
             <Text style={styles.greeting}>Salaam, {displayName}!</Text>
             {participantIdSuffix ? (
               <Text style={styles.userId}>User id: {participantIdSuffix}</Text>
@@ -635,6 +657,7 @@ export function HomeScreen() {
                     style={({ pressed }) => [
                       styles.evolveButton,
                       styles.evolveButtonReady,
+                      isEvolveHighlight && styles.evolveButtonHighlight,
                       pressed && styles.evolveButtonPressed,
                     ]}
                     onPress={handleEvolveAvatar}
@@ -686,6 +709,21 @@ const styles = StyleSheet.create({
   },
   header: {
     gap: 6,
+  },
+  evolvePrompt: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#1E6F5C',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+  },
+  evolvePromptPressed: {
+    opacity: 0.85,
+  },
+  evolvePromptText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '900',
   },
   greeting: {
     fontSize: 24,
@@ -854,6 +892,14 @@ const styles = StyleSheet.create({
   },
   evolveButtonReady: {
     backgroundColor: '#2F8F72',
+  },
+  evolveButtonHighlight: {
+    borderWidth: 2,
+    borderColor: '#F4D98C',
+    shadowColor: '#F4D98C',
+    shadowOpacity: 0.7,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
   },
   evolveButtonPressed: {
     opacity: 0.8,
