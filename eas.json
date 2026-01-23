@@ -8,7 +8,6 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-          "EXPO_PUBLIC_FIREBASE_API_KEY":"AIzaSyDxI8XIfxFysAqWrZ2sSC5eyXSZciV_a5E",
           "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN":"halaqa-passport.firebaseapp.com",
           "EXPO_PUBLIC_FIREBASE_PROJECT_ID":"halaqa-passport",
           "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET":"halaqa-passport.firebasestorage.app",
@@ -20,7 +19,6 @@
     "preview": {
       "distribution": "internal",
       "env": {
-          "EXPO_PUBLIC_FIREBASE_API_KEY":"AIzaSyDxI8XIfxFysAqWrZ2sSC5eyXSZciV_a5E",
           "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN":"halaqa-passport.firebaseapp.com",
           "EXPO_PUBLIC_FIREBASE_PROJECT_ID":"halaqa-passport",
           "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET":"halaqa-passport.firebasestorage.app",
@@ -32,7 +30,6 @@
     "production": {
       "autoIncrement": true,
       "env": {
-          "EXPO_PUBLIC_FIREBASE_API_KEY":"AIzaSyDxI8XIfxFysAqWrZ2sSC5eyXSZciV_a5E",
           "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN":"halaqa-passport.firebaseapp.com",
           "EXPO_PUBLIC_FIREBASE_PROJECT_ID":"halaqa-passport",
           "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET":"halaqa-passport.firebasestorage.app",
