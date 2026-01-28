@@ -1,4 +1,14 @@
-import { Alert, Linking, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import {
+  Alert,
+  Linking,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCallback, useState } from 'react';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -20,6 +30,11 @@ export function SettingsScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
   const [isUpdatingNotifications, setIsUpdatingNotifications] = useState(false);
+  const [gateVisible, setGateVisible] = useState(false);
+  const [gateAnswer, setGateAnswer] = useState('');
+  const [gateNumbers, setGateNumbers] = useState({ first: 12, second: 7 });
+  const [pendingUrl, setPendingUrl] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<null | 'delete-data'>(null);
   const privacyPolicyUrl =
     'https://raw.githubusercontent.com/d4nish1234/halaqa-passport/refs/heads/main/PRIVACY_POLICY.md';
 
@@ -102,6 +117,62 @@ export function SettingsScreen() {
     }
   };
 
+  const openWithParentalGate = (url: string) => {
+    const first = Math.floor(Math.random() * 8) + 12;
+    const second = Math.floor(Math.random() * 8) + 12;
+    setGateNumbers({ first, second });
+    setGateAnswer('');
+    setPendingUrl(url);
+    setGateVisible(true);
+  };
+
+  const requireParentalGateForAction = (action: 'delete-data') => {
+    const first = Math.floor(Math.random() * 8) + 12;
+    const second = Math.floor(Math.random() * 8) + 12;
+    setGateNumbers({ first, second });
+    setGateAnswer('');
+    setPendingUrl(null);
+    setPendingAction(action);
+    setGateVisible(true);
+  };
+
+  const handleGateCancel = () => {
+    setGateVisible(false);
+    setGateAnswer('');
+    setPendingUrl(null);
+    setPendingAction(null);
+  };
+
+  const handleGateConfirm = async () => {
+    const expected = gateNumbers.first + gateNumbers.second;
+    const normalized = Number(gateAnswer.trim());
+
+    if (Number.isNaN(normalized) || normalized !== expected) {
+      Alert.alert('Try again', 'That answer was not correct.');
+      const first = Math.floor(Math.random() * 8) + 12;
+      const second = Math.floor(Math.random() * 8) + 12;
+      setGateNumbers({ first, second });
+      setGateAnswer('');
+      return;
+    }
+
+    const url = pendingUrl;
+    const action = pendingAction;
+    setGateVisible(false);
+    setGateAnswer('');
+    setPendingUrl(null);
+    setPendingAction(null);
+
+    if (url) {
+      await Linking.openURL(url);
+      return;
+    }
+
+    if (action === 'delete-data') {
+      handleDeleteData();
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['left', 'right', 'bottom']}>
       <View style={styles.page}>
@@ -124,7 +195,7 @@ export function SettingsScreen() {
           </View>
           <Pressable
             style={({ pressed }) => [styles.rowButton, pressed && styles.rowPressed]}
-            onPress={() => Linking.openURL(privacyPolicyUrl)}
+            onPress={() => openWithParentalGate(privacyPolicyUrl)}
             disabled={isDeleting}
           >
             <View style={styles.iconCircle}>
@@ -138,7 +209,7 @@ export function SettingsScreen() {
               styles.deleteRow,
               pressed && styles.rowPressed,
             ]}
-            onPress={handleDeleteData}
+            onPress={() => requireParentalGateForAction('delete-data')}
             disabled={isDeleting}
           >
             <View style={[styles.iconCircle, styles.deleteIconCircle]}>
@@ -151,6 +222,36 @@ export function SettingsScreen() {
         </View>
         <FooterNav />
       </View>
+      <Modal
+        transparent
+        animationType="fade"
+        visible={gateVisible}
+        onRequestClose={handleGateCancel}
+      >
+        <View style={styles.gateBackdrop}>
+          <View style={styles.gateCard}>
+            <Text style={styles.gateTitle}>Parents only</Text>
+            <Text style={styles.gateSubtitle}>
+              Solve this to continue: {gateNumbers.first} + {gateNumbers.second}
+            </Text>
+            <TextInput
+              value={gateAnswer}
+              onChangeText={setGateAnswer}
+              placeholder="Enter answer"
+              keyboardType="number-pad"
+              style={styles.gateInput}
+            />
+            <View style={styles.gateActions}>
+              <Pressable style={styles.gateCancelButton} onPress={handleGateCancel}>
+                <Text style={styles.gateCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable style={styles.gateConfirmButton} onPress={handleGateConfirm}>
+                <Text style={styles.gateConfirmText}>Continue</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -226,5 +327,60 @@ const styles = StyleSheet.create({
   },
   deleteLabel: {
     color: '#B42318',
+  },
+  gateBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  gateCard: {
+    width: '100%',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    gap: 12,
+  },
+  gateTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1B3A2E',
+  },
+  gateSubtitle: {
+    fontSize: 14,
+    color: '#3F5D52',
+  },
+  gateInput: {
+    borderWidth: 1,
+    borderColor: '#D2DDD7',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+    color: '#1B3A2E',
+  },
+  gateActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+  },
+  gateCancelButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  gateCancelText: {
+    color: '#3F5D52',
+    fontWeight: '600',
+  },
+  gateConfirmButton: {
+    backgroundColor: '#1E6F5C',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+  },
+  gateConfirmText: {
+    color: '#fff',
+    fontWeight: '700',
   },
 });
