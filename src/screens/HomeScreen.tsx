@@ -7,6 +7,7 @@ import {
   Image,
   Modal,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -30,6 +31,7 @@ import {
   fetchParticipantAttendanceRecords,
   fetchParticipantAttendanceForSeries,
   fetchParticipantExperience,
+  fetchParticipantNickname,
   fetchParticipantRewardClaims,
   fetchParticipantNotificationStatus,
   fetchSeriesByIds,
@@ -68,6 +70,7 @@ export function HomeScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = useState<boolean | null>(null);
   const [confettiKey, setConfettiKey] = useState(0);
   const confettiOrigin = { x: Dimensions.get('window').width / 2, y: 0 };
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isClaimModalVisible, setIsClaimModalVisible] = useState(false);
   const [claimSeriesId, setClaimSeriesId] = useState<string | null>(null);
   const [claimSeriesName, setClaimSeriesName] = useState<string | null>(null);
@@ -205,6 +208,32 @@ export function HomeScreen() {
       setIsLoading(false);
     }
   }, [profile]);
+
+  const refreshNickname = useCallback(async () => {
+    if (!profile) {
+      return;
+    }
+
+    const nickname = await fetchParticipantNickname(profile.participantId);
+    if (nickname && nickname !== profile.nickname) {
+      const nextProfile = { ...profile, nickname };
+      await saveProfile(nextProfile);
+      setProfile(nextProfile);
+    }
+  }, [profile, setProfile]);
+
+  const handleRefresh = useCallback(async () => {
+    if (isRefreshing) {
+      return;
+    }
+
+    setIsRefreshing(true);
+    try {
+      await Promise.all([loadStats(), refreshNickname()]);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [isRefreshing, loadStats, refreshNickname]);
 
   useFocusEffect(
     useCallback(() => {
@@ -544,6 +573,14 @@ export function HomeScreen() {
           ref={scrollRef}
           contentContainerStyle={styles.container}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+              tintColor="#1E6F5C"
+              colors={['#1E6F5C']}
+            />
+          }
         >
           <View style={styles.header}>
             {canEvolve ? (

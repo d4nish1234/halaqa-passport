@@ -72,6 +72,15 @@ export async function fetchParticipantNotificationStatus(
   };
 }
 
+export async function fetchParticipantNickname(
+  participantId: string
+): Promise<string | null> {
+  const ref = doc(db, 'participants', participantId);
+  const snapshot = await getDoc(ref);
+  const data = snapshot.data();
+  return typeof data?.nickname === 'string' ? data.nickname : null;
+}
+
 export async function enableNotifications(
   participantId: string,
   expoPushToken: string

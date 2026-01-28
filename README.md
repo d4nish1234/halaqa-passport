@@ -59,6 +59,12 @@ EXPO_PUBLIC_FIREBASE_APP_ID=
 EXPO_PUBLIC_FIREBASE_FUNCTIONS_REGION=us-central1
 ```
 
+To set the API key in Expo (EAS) environment variables:
+
+```bash
+eas env:create EXPO_PUBLIC_FIREBASE_API_KEY
+```
+
 ## Firestore data model
 
 Collections (V1):
