@@ -18,7 +18,14 @@ export function FooterNav({ stats, series }: FooterNavProps) {
 
   return (
     <View style={styles.container}>
-      <Pressable style={styles.navItem} onPress={() => navigation.navigate('Home')}>
+      <Pressable
+        style={styles.navItem}
+        onPress={() => navigation.navigate('Home')}
+        accessibilityRole="tab"
+        accessibilityLabel="Home"
+        accessibilityHint="Navigate to home screen"
+        accessibilityState={{ selected: isActive('Home') }}
+      >
         <MaterialIcons
           name="home"
           size={20}
@@ -32,6 +39,10 @@ export function FooterNav({ stats, series }: FooterNavProps) {
       <Pressable
         style={styles.navItem}
         onPress={() => navigation.navigate('Badges', { stats })}
+        accessibilityRole="tab"
+        accessibilityLabel="Badges"
+        accessibilityHint="View your earned badges and achievements"
+        accessibilityState={{ selected: isActive('Badges') }}
       >
         <MaterialIcons
           name="emoji-events"
@@ -43,13 +54,23 @@ export function FooterNav({ stats, series }: FooterNavProps) {
         </Text>
         {isActive('Badges') ? <View style={styles.navIndicator} /> : null}
       </Pressable>
-      <Pressable style={styles.cameraButton} onPress={() => navigation.navigate('Scan')}>
+      <Pressable
+        style={styles.cameraButton}
+        onPress={() => navigation.navigate('Scan')}
+        accessibilityRole="button"
+        accessibilityLabel="Scan QR code"
+        accessibilityHint="Open camera to scan QR code for check-in"
+      >
         <MaterialIcons name="qr-code-scanner" size={24} color="#fff" />
         <Text style={styles.cameraLabel}>Scan</Text>
       </Pressable>
       <Pressable
         style={styles.navItem}
         onPress={() => navigation.navigate('Series', { series })}
+        accessibilityRole="tab"
+        accessibilityLabel="Series"
+        accessibilityHint="View all series you've participated in"
+        accessibilityState={{ selected: isActive('Series') }}
       >
         <MaterialIcons
           name="list-alt"
@@ -64,6 +85,10 @@ export function FooterNav({ stats, series }: FooterNavProps) {
       <Pressable
         style={styles.navItem}
         onPress={() => navigation.navigate('Settings')}
+        accessibilityRole="tab"
+        accessibilityLabel="Settings"
+        accessibilityHint="Manage your profile and app settings"
+        accessibilityState={{ selected: isActive('Settings') }}
       >
         <MaterialIcons
           name="settings"

@@ -11,6 +11,7 @@ import { useProfile } from '../context/ProfileContext';
 import { checkInSession, recordSeriesParticipation } from '../lib/firestore';
 import { parseSessionPayload } from '../lib/qr';
 import type { RootStackParamList } from '../navigation/RootNavigator';
+import { handleError } from '../lib/errors';
 
 export function ScanScreen() {
   const { profile } = useProfile();
@@ -93,8 +94,13 @@ export function ScanScreen() {
         setResultMessage(response.message || 'Check-in did not work.');
       }
     } catch (err) {
+      const appError = handleError(err, {
+        context: 'checkIn',
+        sessionId: payload.sessionId,
+        seriesId: payload.seriesId
+      });
       setResultType('error');
-      setResultMessage('We could not reach the check-in system.');
+      setResultMessage(appError.userMessage);
     } finally {
       setIsProcessing(false);
       setIsScanningEnabled(false);

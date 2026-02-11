@@ -4,10 +4,14 @@ export function PrimaryButton({
   title,
   onPress,
   disabled,
+  accessibilityLabel,
+  accessibilityHint,
 }: {
   title: string;
   onPress: () => void;
   disabled?: boolean;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
 }) {
   return (
     <Pressable
@@ -18,6 +22,10 @@ export function PrimaryButton({
         pressed && styles.pressed,
         disabled && styles.disabled,
       ]}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel || title}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={{ disabled: disabled || false }}
     >
       <Text style={styles.text}>{title}</Text>
     </Pressable>

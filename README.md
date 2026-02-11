@@ -132,6 +132,14 @@ To deploy:
 firebase deploy --only firestore:rules --project halaqa-passport
 ```
 
+## Firestore indexes
+
+Composite indexes are required for efficient queries. To deploy:
+
+```bash
+firebase deploy --only firestore:indexes --project halaqa-passport
+```
+
 ## Build iOS (EAS)
 
 ```bash

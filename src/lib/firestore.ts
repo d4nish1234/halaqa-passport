@@ -5,7 +5,6 @@ import {
   documentId,
   getDocs,
   getDoc,
-  FieldPath,
   arrayUnion,
   limit,
   query,
@@ -24,6 +23,7 @@ import {
   SessionPayload,
 } from '../types';
 import { db, functions } from './firebase';
+import { handleError } from './errors';
 
 function toDate(value: unknown): Date | null {
   if (value && typeof (value as { toDate?: () => Date }).toDate === 'function') {
@@ -163,14 +163,10 @@ export async function claimSeriesReward(
   rewardThreshold: number
 ): Promise<void> {
   const ref = doc(db, 'participants', participantId);
-  const claimedPath = new FieldPath('rewards', seriesId, 'claimed');
-  await updateDoc(
-    ref,
-    claimedPath,
-    arrayUnion(rewardThreshold),
-    'lastSeenAt',
-    serverTimestamp()
-  );
+  await updateDoc(ref, {
+    [`rewards.${seriesId}.claimed`]: arrayUnion(rewardThreshold),
+    lastSeenAt: serverTimestamp(),
+  });
 }
 
 export async function fetchParticipantAttendanceDates(

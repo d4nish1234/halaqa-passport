@@ -48,6 +48,7 @@ import { ParticipantStats, SeriesSummary } from '../types';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import type { RouteProp } from '@react-navigation/native';
+import { handleError, formatErrorMessage } from '../lib/errors';
 
 export function HomeScreen() {
   const { profile, setProfile } = useProfile();
@@ -203,7 +204,9 @@ export function HomeScreen() {
       });
       setExperience(expValue);
     } catch (err) {
-      setError('We had trouble loading your stats.');
+      const appError = handleError(err, { context: 'loadStats' });
+      const errorMsg = formatErrorMessage(appError, 'refresh');
+      setError(errorMsg.action ? `${errorMsg.message} ${errorMsg.action}` : errorMsg.message);
     } finally {
       setIsLoading(false);
     }
@@ -421,7 +424,8 @@ export function HomeScreen() {
       setIsClaimConfettiVisible(true);
       setIsClaimModalVisible(false);
     } catch (err) {
-      Alert.alert('Could not claim reward', 'Please try again.');
+      const appError = handleError(err, { context: 'claimReward', seriesId: claimSeriesId });
+      Alert.alert('Could not claim reward', appError.userMessage);
     } finally {
       setIsClaimingReward(false);
     }
@@ -475,7 +479,8 @@ export function HomeScreen() {
         );
         setProfile(nextProfile);
       } catch (err) {
-        Alert.alert('Could not evolve avatar', 'Please try again.');
+        const appError = handleError(err, { context: 'evolveAvatar', avatarId: avatar.id });
+        Alert.alert('Could not evolve avatar', appError.userMessage);
       } finally {
         Animated.parallel([
           Animated.timing(avatarOpacity, {
@@ -590,6 +595,9 @@ export function HomeScreen() {
                   pressed && styles.evolvePromptPressed,
                 ]}
                 onPress={handleEvolvePrompt}
+                accessibilityRole="button"
+                accessibilityLabel="Evolve your avatar"
+                accessibilityHint="Scroll to avatar evolution section"
               >
                 <Text style={styles.evolvePromptText}>Evolve your avatar!</Text>
               </Pressable>
@@ -612,6 +620,9 @@ export function HomeScreen() {
               <Text style={styles.seriesTitle}>My Recent Series</Text>
               <Pressable
                 onPress={() => navigation.navigate('Series', { series: seriesSummaries })}
+                accessibilityRole="button"
+                accessibilityLabel="View all series"
+                accessibilityHint="See complete list of all series you've participated in"
               >
                 <Text style={styles.seriesLink}>View All</Text>
               </Pressable>
@@ -698,6 +709,9 @@ export function HomeScreen() {
                       pressed && styles.evolveButtonPressed,
                     ]}
                     onPress={handleEvolveAvatar}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Evolve ${avatar?.name || 'avatar'} to form ${avatarFormLevel + 1}`}
+                    accessibilityHint="Transform your avatar to the next level"
                   >
                     <Text style={styles.evolveButtonText}>Evolve</Text>
                   </Pressable>
@@ -714,6 +728,9 @@ export function HomeScreen() {
                     styles.changeAvatarButton,
                     pressed && styles.changeAvatarButtonPressed,
                   ]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Change avatar"
+                  accessibilityHint="Select a different avatar character"
                 >
                   <Text style={styles.changeAvatarText}>Change avatar</Text>
                 </Pressable>
